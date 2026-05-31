@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Интерактивная карта тревог ПФО от @radarPF0</title>
+    <!-- Подключаем движок живых карт Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #121212; color: white; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Карта на весь экран как на скрине */
+        #map { flex: 1; height: 100%; z-index: 1; }
+        
+        /* Панель управления */
+        .sidebar { width: 330px; background-color: #1a1a1a; border-left: 2px solid #2d2d2d; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: -5px 0 15px rgba(0,0,0,0.5); }
+        h1 { font-size: 16px; margin-top: 0; color: #00e5ff; border-bottom: 1px solid #2d2d2d; padding-bottom: 10px; text-align: center; font-weight: bold; }
+        label { font-size: 11px; color: #aaa; margin-top: 10px; display: block; }
+        select, button { width: 100%; padding: 11px; margin: 5px 0; font-size: 13px; font-weight: bold; border-radius: 6px; border: none; box-sizing: border-box; }
+        select { background-color: #2d2d2d; color: white; border: 1px solid #3a3a3a; cursor: pointer; }
+        button { cursor: pointer; transition: transform 0.1s; color: white; }
+        button:active { transform: scale(0.98); }
+        
+        /* Цвета кнопок */
+        .btn-safe { background-color: #2e7d32; }
+        .btn-attention { background-color: #fbc02d; color: black; }
+        .btn-bpla { background-color: #ef6c00; }
+        .btn-alarm { background-color: #c62828; }
+        .btn-rocket { background-color: #4a0002; }
+        .btn-clear { background-color: #37474f; border: 1px dashed #546e7a; margin-top: 10px; }
+
+        /* Кастомные стили для пульсирующих кругов ПВО на самой карте */
+        .radar-zone { border-radius: 50%; transition: all 0.4s ease; }
+        .zone-safe { background-color: rgba(46, 125, 50, 0.2) !important; fill: #2e7d32 !important; stroke: #2e7d32 !important; }
+        .zone-attention { background-color: rgba(251, 192, 45, 0.4) !important; fill: #fbc02d !important; stroke: #fbc02d !important; }
+        .zone-bpla { background-color: rgba(239, 108, 0, 0.5) !important; fill: #ef6c00 !important; stroke: #ef6c00 !important; }
+        .zone-alarm { background-color: rgba(198, 40, 40, 0.5) !important; fill: #c62828 !important; stroke: #c62828 !important; animation: pulse 1.5s infinite; }
+        .zone-rocket { background-color: rgba(74, 0, 2, 0.6) !important; fill: #4a0002 !important; stroke: #ff1744 !important; animation: pulse 0.8s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ИНТЕРАКТИВНАЯ КАРТА МИРА -->
+    <div id="map"></div>
+
+    <!-- БОКОВОЙ ПУЛЬТ -->
+    <div class="sidebar">
+        <h1>📡 МОНИТОР ПФО v4.5</h1>
+        
+        <label for="city-select">Выберите сектор контроля:</label>
+        <select id="city-select" onchange="focusCity()">
+            <option value="izhevsk">📍 Ижевск (Удмуртия)</option>
+            <option value="kirov">📍 Киров (Кировская обл.)</option>
+            <option value="kazan">📍 Казань (Татарстан)</option>
+            <option value="samara">📍 Самара (Самарская обл.)</option>
+            <option value="ufa">📍 Уфа (Башкирия)</option>
+            <option value="perm">📍 Пермь (Пермский край)</option>
+            <option value="nn">📍 Нижний Новгород</option>
+            <option value="saratov">📍 Саратов (Саратовская обл.)</option>
+        </select>
+
+        <label>Установить статус на карте:</label>
+        <button class="btn-safe" onclick="applyStatus('safe')">🟢 1. Полный отбой</button>
+        <button class="btn-attention" onclick="applyStatus('attention')">🟡 2. Внимание по БпЛА</button>
+        <button class="btn-bpla" onclick="applyStatus('bpla')">🟠 3. Опасность по БпЛА</button>
+        <button class="btn-alarm" onclick="applyStatus('alarm')">🔴 4. Тревога по БпЛА</button>
+        <button class="btn-rocket" onclick="applyStatus('rocket')">⚫ 5. РАКЕТНАЯ ОПАСНОСТЬ</button>
+        
+        <button class="btn-clear" onclick="resetAll()">🔄 Сбросить все сектора</button>
+        
+        <p style="font-size: 11px; color: #555; text-align: center; margin-top: auto;">Карта тревог ПФО • Цель: информирование гражданских</p>
+    </div>
+
+    <!-- Скрипты карты -->
+    <script src="https://unpkg.com"></script>
+    <script>
+        // Инициализируем карту и наводим центр строго на наш Ижевск
+        const map = L.map('map').setView([56.85, 53.20], 6);
+
+        // Ставим красивую темную подложку карты мира, которая работает в РФ без ВПН
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // База данных наших радарных зон вокруг ключевых городов ПФО
+        const sectors = {
+            "izhevsk": { name: "Ижевск (Удмуртия)", coords: [56.85, 53.20], marker: null },
+            "kirov": { name: "Киров", coords: [58.60, 49.66], marker: null },
+            "kazan": { name: "Казань (Татарстан)", coords: [55.79, 49.11], marker: null },
+            "samara": { name: "Самара", coords: [53.20, 50.15], marker: null },
+            "ufa": { name: "Уфа (Башкирия)", coords: [54.74, 55.97], marker: null },
+            "perm": { name: "Пермь", coords: [58.01, 56.25], marker: null },
+            "nn": { name: "Нижний Новгород", coords: [56.32, 44.00], marker: null },
+            "saratov": { name: "Саратов", coords: [51.54, 46.03], marker: null }
+        };
+
+        // Рисуем зоны ПВО радиусом 60 км вокруг городов
+        for (let key in sectors) {
+            sectors[key].marker = L.circle(sectors[key].coords, {
+                radius: 60000, 
+                weight: 2,
+                fillOpacity: 0.4,
+                className: 'radar-zone zone-safe'
+            }).addTo(map).bindPopup(`<b>Сектор: ${sectors[key].name}</b>`);
+        }
+
+        // Переключение статусов опасности по кнопкам
+        function applyStatus(status) {
+            const currentKey = document.getElementById("city-select").value;
+            const marker = sectors[currentKey].marker;
+            
+            // Убираем старые классы
+            marker.setStyle({ className: 'radar-zone zone-' + status });
+            
+            let statusText = "🟢 Чисто";
+            if (status === 'attention') statusText = "🟡 Внимание по БпЛА";
+            if (status === 'bpla') statusText = "🟠 Опасность по БпЛА";
+            if (status === 'alarm') statusText = "🔴 Тревога по БпЛА";
+            if (status === 'rocket') statusText = "⚫ РАКЕТНАЯ ОПАСНОСТЬ";
+            
+            marker.setPopupContent(`<b>Сектор: ${sectors[currentKey].name}</b><br>Статус: <b>${statusText}</b>`);
+        }
+
+        // Наведение камеры на выбранный сектор
+        function focusCity() {
+            const currentKey = document.getElementById("city-select").value;
+            map.setView(sectors[currentKey].coords, 7);
+        }
+
+        // Сброс всех зон в зелёный
+        function resetAll() {
+            for (let key in sectors) {
+                sectors[key].marker.setStyle({ className: 'radar-zone zone-safe' });
+                sectors[key].marker.setPopupContent(`<b>Сектор: ${sectors[key].name}</b>`);
+            }
+        }
+    </script>
+</body>
+</html>
