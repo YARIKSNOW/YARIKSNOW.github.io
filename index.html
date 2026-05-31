@@ -3,42 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <title>Интерактивная карта тревог ПФО от @radarPF0</title>
-    <!-- Подключаем официальный и неубиваемый движок Яндекс.Карт -->
-    <script src="https://yandex.ru" type="text/javascript"></script>
+    <!-- 1. Подключаем стили карты Leaflet (Строго как на оригинальном сайте) -->
+    <link rel="stylesheet" href="https://unpkg.com" />
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #121212; color: white; display: flex; height: 100vh; overflow: hidden; }
+        /* Полностью убираем отступы, чтобы карта была на весь экран */
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; background-color: #121212; color: white; display: flex; overflow: hidden; }
         
-        /* Карта на весь экран */
-        #map { flex: 1; height: 100%; z-index: 1; }
+        /* Главное окно интерактивной карты */
+        #map { flex: 1; height: 100%; width: 100%; z-index: 1; background-color: #151515; }
         
-        /* Панель управления справа */
-        .sidebar { width: 330px; background-color: #1a1a1a; border-left: 2px solid #2d2d2d; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: -5px 0 15px rgba(0,0,0,0.5); box-sizing: border-box; }
-        h1 { font-size: 16px; margin-top: 0; color: #00e5ff; border-bottom: 1px solid #2d2d2d; padding-bottom: 10px; text-align: center; font-weight: bold; }
-        label { font-size: 11px; color: #aaa; margin-top: 10px; display: block; }
+        /* Стильный пульт управления справа */
+        .sidebar { width: 330px; min-width: 330px; background-color: #1a1a1a; border-left: 2px solid #2d2d2d; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: -5px 0 15px rgba(0,0,0,0.5); box-sizing: border-box; }
+        h1 { font-size: 16px; margin-top: 0; color: #00e5ff; border-bottom: 1px solid #2d2d2d; padding-bottom: 10px; text-align: center; font-weight: bold; letter-spacing: 1px; }
+        label { font-size: 11px; color: #aaa; margin-top: 12px; display: block; text-align: left; }
+        
+        /* Кнопки и выпадающий список */
         select, button { width: 100%; padding: 11px; margin: 5px 0; font-size: 13px; font-weight: bold; border-radius: 6px; border: none; box-sizing: border-box; }
         select { background-color: #2d2d2d; color: white; border: 1px solid #3a3a3a; cursor: pointer; }
         button { cursor: pointer; transition: transform 0.1s; color: white; }
         button:active { transform: scale(0.98); }
         
-        /* Цвета кнопок пульта */
+        /* Боевые цвета кнопок */
         .btn-safe { background-color: #2e7d32; }
         .btn-attention { background-color: #fbc02d; color: black; }
         .btn-bpla { background-color: #ef6c00; }
         .btn-alarm { background-color: #c62828; }
         .btn-rocket { background-color: #4a0002; }
-        .btn-clear { background-color: #37474f; border: 1px dashed #546e7a; margin-top: 10px; }
+        .btn-clear { background-color: #37474f; border: 1px dashed #546e7a; margin-top: 12px; }
         
         p { font-size: 11px; color: #555; text-align: center; margin-top: auto; }
     </style>
 </head>
 <body>
 
-    <!-- ЖИВАЯ КАРТА ЯНДЕКСА -->
+    <!-- ОКНО ЖИВОЙ КАРТЫ МИРА -->
     <div id="map"></div>
 
-    <!-- БОКОВОЙ ПУЛЬТ -->
+    <!-- БОКОВОЙ ПУЛЬТ УПРАВЛЕНИЯ -->
     <div class="sidebar">
-        <h1>📡 МОНИТОР ПФО v5.0</h1>
+        <h1>📡 МОНИТОР ПФО v5.5</h1>
         
         <label for="city-select">Выберите сектор контроля:</label>
         <select id="city-select" onchange="focusCity()">
@@ -52,31 +55,31 @@
             <option value="saratov">📍 Саратов (Саратовская обл.)</option>
         </select>
 
-        <label>Установить статус на карте:</label>
+        <label>Установить статус опасности:</label>
         <button class="btn-safe" onclick="applyStatus('safe')">🟢 1. Полный отбой</button>
-        <button class="btn-attention" onclick="applyStatus('attention')">🟡 2. Внимание по БпЛА</button>
-        <button class="btn-bpla" onclick="applyStatus('bpla')">🟠 3. Опасность по БпЛА</button>
-        <button class="btn-alarm" onclick="applyStatus('alarm')">🔴 4. Тревога по БпЛА</button>
-        <button class="btn-rocket" onclick="applyStatus('rocket')">⚫ 5. РАКЕТНАЯ ОПАСНОСТЬ</button>
+        <button class="btn-attention" onclick="setStatusColor('#fbc02d', '🟡 Внимание по БпЛА')">🟡 2. Внимание по БпЛА</button>
+        <button class="btn-bpla" onclick="setStatusColor('#ef6c00', '🟠 Опасность по БпЛА')">🟠 3. Опасность по БпЛА</button>
+        <button class="btn-alarm" onclick="setStatusColor('#c62828', '🔴 Тревога по БпЛА')">🔴 4. Тревога по БпЛА</button>
+        <button class="btn-rocket" onclick="setStatusColor('#4a0002', '⚫ РАКЕТНАЯ ОПАСНОСТЬ')">⚫ 5. РАКЕТНАЯ ОПАСНОСТЬ</button>
         
         <button class="btn-clear" onclick="resetAll()">🔄 Сбросить все сектора</button>
         
-        <p>Карта тревог ПФО • Цель: информирование гражданских</p>
+        <p>Ситуационный радар ПФО • Ссылка на ТГ: @radarPF0</p>
     </div>
 
-    <script type="text/javascript">
-        let myMap;
-        
-        // Сетка цветов для зон ПВО Яндекса
-        const statusColors = {
-            'safe': { fill: '#2e7d32', stroke: '#1b5e20', opacity: 0.2 },
-            'attention': { fill: '#fbc02d', stroke: '#f57f17', opacity: 0.35 },
-            'bpla': { fill: '#ef6c00', stroke: '#e65100', opacity: 0.45 },
-            'alarm': { fill: '#c62828', stroke: '#b71c1c', opacity: 0.5 },
-            'rocket': { fill: '#4a0002', stroke: '#ff1744', opacity: 0.6 }
-        };
+    <!-- 2. Подключаем сам движок карт Leaflet (Строго оригинальная ссылка) -->
+    <script src="https://unpkg.com"></script>
+    <script>
+        // Запускаем карту мира и наводим камеру строго на наш Ижевск
+        const map = L.map('map').setView([56.85, 53.20], 6);
 
-        // База данных координат секторов ПФО
+        // Стандартная, чистая подложка OpenStreetMap (которая 100% работает на домене github.io)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // База данных наших секторов ПФО
         const sectors = {
             "izhevsk": { name: "Ижевск (Удмуртия)", coords: [56.85, 53.20], circle: null },
             "kirov": { name: "Киров", coords: [58.60, 49.66], circle: null },
@@ -88,69 +91,55 @@
             "saratov": { name: "Саратов", coords: [51.54, 46.03], circle: null }
         };
 
-        // Инициализация Яндекс Карт
-        ymaps.ready(init);
-        function init() {
-            myMap = new ymaps.Map("map", {
-                center: [56.85, 53.20], // Центрируем на Ижевск
-                zoom: 6,
-                controls: ['zoomControl', 'typeSelector']
+        // Рисуем стандартные круги радарных зон радиусом 55 км (в начале все зеленые)
+        for (let key in sectors) {
+            sectors[key].circle = L.circle(sectors[key].coords, {
+                radius: 55000,
+                color: '#2e7d32',
+                fillColor: '#2e7d32',
+                fillOpacity: 0.3,
+                weight: 2
+            }).addTo(map).bindPopup(`<b>Сектор: ${sectors[key].name}</b><br>Статус: Чисто`);
+        }
+
+        // Функция изменения цвета круга на любой кастомный
+        function setStatusColor(hexColor, textStatus) {
+            const currentKey = document.getElementById("city-select").value;
+            const circle = sectors[currentKey].circle;
+            
+            circle.setStyle({
+                color: hexColor === '#4a0002' ? '#ff1744' : hexColor, // Если ракетная тревога — делаем яркий контур
+                fillColor: hexColor,
+                fillOpacity: 0.5
             });
+            
+            circle.setPopupContent(`<b>Сектор: ${sectors[currentKey].name}</b><br>Статус: <b>${textStatus}</b>`);
+        }
 
-            // Включаем темный полупрозрачный слой поверх для тактического вида
-            myMap.panes.get('ground').getElement().style.filter = 'brightness(40%) contrast(120%) saturate(80%)';
-
-            // Рисуем круги радарных зон
-            for (let key in sectors) {
-                sectors[key].circle = new ymaps.Circle([sectors[key].coords, 50000], {
-                    balloonContent: `<b>Сектор: ${sectors[key].name}</b><br>Статус: Чисто`
-                }, {
-                    fillColor: statusColors['safe'].fill,
-                    strokeColor: statusColors['safe'].stroke,
-                    fillOpacity: statusColors['safe'].opacity,
-                    strokeWidth: 2
-                });
-
-                myMap.geoObjects.add(sectors[key].circle);
+        // Отдельная логика для кнопки полного отбоя (возвращает стандартный зеленый)
+        function applyStatus(status) {
+            if (status === 'safe') {
+                setStatusColor('#2e7d32', '🟢 Чисто');
+                const currentKey = document.getElementById("city-select").value;
+                sectors[currentKey].circle.setStyle({ fillOpacity: 0.3 });
             }
         }
 
-        // Логика кнопок смены статусов
-        function applyStatus(status) {
-            const currentKey = document.getElementById("city-select").value;
-            const circle = sectors[currentKey].circle;
-            const config = statusColors[status];
-            
-            circle.options.set({
-                fillColor: config.fill,
-                strokeColor: config.stroke,
-                fillOpacity: config.opacity
-            });
-
-            let statusText = "🟢 Чисто";
-            if (status === 'attention') statusText = "🟡 Внимание по БпЛА";
-            if (status === 'bpla') statusText = "🟠 Опасность по БпЛА";
-            if (status === 'alarm') statusText = "🔴 Тревога по БпЛА";
-            if (status === 'rocket') statusText = "⚫ РАКЕТНАЯ ОПАСНОСТЬ";
-
-            circle.properties.set('balloonContent', `<b>Сектор: ${sectors[currentKey].name}</b><br>Статус: <b>${statusText}</b>`);
-        }
-
-        // Автофокус камеры
+        // Автоматическое плавное наведение камеры на выбранный город
         function focusCity() {
             const currentKey = document.getElementById("city-select").value;
-            myMap.setCenter(sectors[currentKey].coords, 7, { checkZoomRange: true, duration: 300 });
+            map.setView(sectors[currentKey].coords, 7);
         }
 
-        // Сброс всей карты
+        // Сброс абсолютно всех секторов в зеленый цвет в один клик
         function resetAll() {
             for (let key in sectors) {
-                sectors[key].circle.options.set({
-                    fillColor: statusColors['safe'].fill,
-                    strokeColor: statusColors['safe'].stroke,
-                    fillOpacity: statusColors['safe'].opacity
+                sectors[key].circle.setStyle({
+                    color: '#2e7d32',
+                    fillColor: '#2e7d32',
+                    fillOpacity: 0.3
                 });
-                sectors[key].circle.properties.set('balloonContent', `<b>Сектор: ${sectors[key].name}</b>`);
+                sectors[key].circle.setPopupContent(`<b>Сектор: ${sectors[key].name}</b><br>Статус: Чисто`);
             }
         }
     </script>
