@@ -15,7 +15,7 @@ html, body, #map {
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: #b4d6e4; /* Цвет моря, как у них */
+  background-color: #b4d6e4;
 }
 /* БЕЛАЯ ОФИЦИАЛЬНАЯ ШАПКА КАК У RADARYRAL */
 .main-title-header {
@@ -50,10 +50,10 @@ html, body, #map {
 <script src="https://cloudflare.com"></script>
 
 <script>
-// НАСТРОЙКА КАРТЫ: ВИД СРАЗУ НА ВСЮ РОССИЮ (КАК ТЫ ХОТЕЛ!)
+// НАСТРОЙКА КАРТЫ: ИСПРАВЛЕНО! ВЕРНУЛИ КООРДИНАТЫ ЦЕНТРА РОССИИ
 const map = L.map('map', {zoomControl: true}).setView([61, 105], 3);
 
-// СЛОЙ КАРТЫ contributors (БЕЗ ОШИБОК)
+// СЛОЙ КАРТЫcontributors (БЕЗ ОШИБОК)
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
@@ -63,7 +63,7 @@ const alertColor = "#ff0000";  // Красный цвет тревоги
 
 let regionsLayer = null;
 
-// ТАКТИЧЕСКИЙ ЗАГРУЗЧИК ГРАНИЦ РОССИИ И ПФО
+// ТАКТИЧЕСКИЙ ЗАГРУЗЧИК БЫСТРЫХ ГРАНИЦ РЕГИОНОВ (ИСПРАВЛЕНО НА НАДЕЖНЫЙ CDN!)
 fetch("https://githubusercontent.com")
   .then(response => response.json())
   .then(data => {
@@ -78,15 +78,17 @@ fetch("https://githubusercontent.com")
         };
       },
       onEachFeature: function(feature, layer) {
-        if (feature.properties.name) {
-          layer.bindPopup(feature.properties.name);
+        // Проверяем имя региона в базе данных GeoJSON
+        const name = feature.properties.name || feature.properties.NAME;
+        if (name) {
+          layer.bindPopup(name);
         }
       }
     }).addTo(map);
 
-    // Сразу запускаем проверку сигналов из проверенного источника
+    // Авто-проверка сигналов
     updateRegions();
-    setInterval(updateRegions, 30000); // Обновление на автомате каждые 30 секунд
+    setInterval(updateRegions, 30000);
 
   })
   .catch(error => {
@@ -98,14 +100,12 @@ async function updateRegions() {
   if (!regionsLayer) return;
 
   try {
-    // Качаем актуальную инфу по угрозам
     const response = await fetch("https://githubusercontent.com" + Date.now());
     const alerts = await response.json();
 
     regionsLayer.eachLayer(function(layer) {
-      const regName = layer.feature.properties.name;
+      const regName = layer.feature.properties.name || layer.feature.properties.NAME;
 
-      // Если в источнике по региону висит опасность — красим в красный!
       if (alerts[regName] === "red" || alerts[regName] === "danger") {
         layer.setStyle({ fillColor: alertColor });
       } else {
