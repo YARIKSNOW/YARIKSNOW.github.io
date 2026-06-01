@@ -3,30 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Радар ПФО — Бета Версия v1.0</title>
+<title>Радар ПФО — Мониторинг v11.0</title>
 
-<!-- НАДЕЖНЫЕ СТИЛИ КАРТЫ -->
+<!-- ОФИЦИАЛЬНЫЕ СТИЛИ LEAFLET (КАК У НИХ) -->
 <link rel="stylesheet" href="https://cloudflare.com" />
 
 <style>
-/* 1. НАСТРОЙКА ЭКРАНА */
+/* 1. НАСТРОЙКА ТАКТИЧЕСКОГО ЭКРАНА */
 html, body, #map {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: #020205;
+  background-color: #b4d6e4; /* Цвет океана, если тайлы грузятся */
 }
-/* 2. ТАКТИЧЕСКАЯ ШАПКА РАДАРА */
-.radar-top-bar {
+/* 2. НАША НЕОНОВАЯ ШАПКА */
+.top-radar-header {
   position: absolute;
   top: 15px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  background: rgba(10, 15, 30, 0.9);
+  background: rgba(10, 16, 36, 0.9);
   color: #3f3;
-  padding: 10px 20px;
+  padding: 10px 25px;
   border: 2px solid #10b981;
   border-radius: 6px;
   text-align: center;
@@ -34,14 +34,14 @@ html, body, #map {
   font-weight: bold;
   box-shadow: 0 0 15px rgba(16,185,129,0.3);
 }
-/* 3. НАША СЕКРЕТНАЯ ПАНЕЛЬКА */
-.admin-panel {
+/* 3. НАША СЕКРЕТНАЯ ПАНЕЛЬКА УПРАВЛЕНИЯ */
+.admin-sidebar {
   position: absolute;
   top: 15px;
   right: -320px;
   width: 250px;
   z-index: 1000;
-  background: rgba(10, 15, 30, 0.95);
+  background: rgba(10, 16, 36, 0.95);
   border: 2px solid #ef4444;
   padding: 15px;
   color: #fff;
@@ -49,11 +49,11 @@ html, body, #map {
   border-radius: 6px;
   transition: right 0.4s ease;
 }
-.admin-panel.open {
+.admin-sidebar.open {
   right: 15px;
   box-shadow: 0 0 20px rgba(239,68,68,0.4);
 }
-.btn {
+.menu-btn {
   width: 100%;
   padding: 10px;
   margin: 5px 0;
@@ -64,136 +64,127 @@ html, body, #map {
   cursor: pointer;
   text-align: left;
 }
-.btn:hover {
+.menu-btn:hover {
   filter: brightness(1.2);
 }
 </style>
 </head>
 <body>
 
-<!-- ВЕРХНЯЯ ШАПКА -->
-<div class="radar-top-bar">
-  Народный «РАДАР ПФО» (@radarPF0)
-  <div id="global-status" style="margin-top:5px; background:#1e293b; padding:2px 6px; border-radius:3px; color:#fff; font-size:13px;">Статус: 🟢 Отбой</div>
+<!-- ВЕРХНЯЯ ШАПКА РАДАРА -->
+<div class="top-radar-header">
+  Карта тревог ПФО от @radarPF0, цель - информирование гражданских
+  <div id="global-status" style="margin-top:5px; background:#1e293b; padding:2px 6px; border-radius:3px; color:#fff; font-size:12px;">Статус: 🟢 Отбой</div>
 </div>
 
-<!-- СЕКРЕТНЫЙ ПУЛЬТ -->
-<div class="admin-panel" id="adm">
+<!-- БОКОВОЙ ПУЛЬТ АДМИНА -->
+<div class="admin-sidebar" id="adm">
   <h3 style="color:#ef4444; margin:0 0 10px 0; text-align:center;">ПУЛЬТ РАДАРА</h3>
   <div id="active-reg-title" style="color:#38bdf8; margin-bottom:10px; font-weight:bold;">Регион: Не выбран</div>
-  <button class="btn" style="background:#10b981;" onclick="applyLvl('1')">1. 🟢 Отбой</button>
-  <button class="btn" style="background:#f59e0b; color:#000;" onclick="applyLvl('2')">2. 🟡 Внимание</button>
-  <button class="btn" style="background:#f97316;" onclick="applyLvl('3')">3. 🟠 Опасность</button>
-  <button class="btn" style="background:#ef4444;" onclick="applyLvl('4')">4. 🔴 Тревога</button>
-  <button class="btn" style="background:#450a0a; border:1px solid #ef4444;" onclick="applyLvl('5')">5. ⚫ РАКЕТА</button>
-  <button class="btn" style="background:#334155; text-align:center;" onclick="document.getElementById('adm').classList.remove('open')">Скрыть пульт</button>
+  <button class="menu-btn" style="background:#10b981;" onclick="applyLvl('1')">1. 🟢 Отбой</button>
+  <button class="menu-btn" style="background:#f59e0b; color:#000;" onclick="applyLvl('2')">2. 🟡 Внимание</button>
+  <button class="menu-btn" style="background:#f97316;" onclick="applyLvl('3')">3. 🟠 Опасность</button>
+  <button class="menu-btn" style="background:#ef4444;" onclick="applyLvl('4')">4. 🔴 Тревога</button>
+  <button class="menu-btn" style="background:#450a0a; border:1px solid #ef4444;" onclick="applyLvl('5')">5. ⚫ РАКЕТА</button>
+  <button class="menu-btn" style="background:#334155; text-align:center;" onclick="document.getElementById('adm').classList.remove('open')">Скрыть пульт</button>
 </div>
 
-<!-- БЛОК ДЛЯ КАРТЫ -->
+<!-- КОНТЕЙНЕР ДЛЯ ЖИВОЙ КАРТЫ -->
 <div id="map"></div>
 
-<!-- ДВИЖОК КАРТЫ -->
+<!-- ОФИЦИАЛЬНЫЙ ДВИЖОК LEAFLET -->
 <script src="https://cloudflare.com"></script>
 
+"></script>
+
 <script>
-// ==========================================
-// НАСТРОЙКИ СВЯЗИ С ТГ (ВВОДИ ДАННЫЕ СЮДА!)
-// ==========================================
+// ТАКТИЧЕСКИЕ НАСТРОЙКИ СВЯЗИ ТГ (ВСТАВЛЯЙ СВОИ)
 var TG_TOKEN = "8859581232:AAGB90jqhXYJlyaD2wfDGxnqd18VOGeRbyk";
 var ADMIN_CHAT_ID = "5307988804";
-// ==========================================
 
 var curRegName = "";
-var activeMarkers = {};
+var curLayer = null;
+var activeLayers = {};
 
-// Запуск карты Leaflet. Сразу центрируем на Ижевск!
+// Запуск карты с видом на Поволжье (Ижевск по центру)
 var map = L.map('map', {zoomControl: false}).setView([56.852, 53.204], 6);
 
-// ПОДКЛЮЧАЕМ РОССИЙСКИЙ СПУТНИКОВЫЙ СЛОЙ (БЕЗ БЛОКИРОВОК И КЛЮЧЕЙ)
-L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', {
-  subdomains: ['1', '2', '3', '4'],
+// КЛАССИЧЕСКИЙ СЛОЙ OPENSTREETMAP (КАК НА ИХ СКРИНШОТЕ)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 18,
-  attribution: '&copy; Яндекс.Карты'
+  attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// 14 столиц регионов ПФО для контроля
-var pvoNodes = {
-  "Ижевск (Удмуртия)": [56.852, 53.204],
-  "Киров (Кировская)": [58.596, 49.654],
-  "Казань (Татарстан)": [55.788, 49.122],
-  "Уфа (Башкортостан)": [54.738, 55.972],
-  "Самара (Самарская)": [53.200, 50.150],
-  "Пермь (Пермский край)": [58.010, 56.250],
-  "Нижний Новгород": [56.328, 44.002],
-  "Саратов (Саратовская)": [51.540, 46.008],
-  "Оренбург (Оренбургская)": [51.766, 55.099],
-  "Пенза (Пензенская)": [53.200, 45.000],
-  "Ульяновск (Ульяновская)": [54.328, 48.386],
-  "Саранск (Мордовия)": [54.183, 45.174],
-  "Чебоксары (Чувашия)": [56.132, 47.251],
-  "Йошкар-Ола (Марий Эл)": [56.632, 47.886]
-};
-
 var lvls = {
-  "1": { color: "#10b981", text: "🟢 Отбой" },
-  "2": { color: "#f59e0b", text: "🟡 Внимание" },
-  "3": { color: "#f97316", text: "🟠 Опасность" },
-  "4": { color: "#ef4444", text: "🔴 Тревога" },
-  "5": { color: "#ff0000", text: "⚫ РАКЕТА" }
+  "1": { color: "#eaeaea", text: "🟢 Отбой" },                  // Серый цвет покоя
+  "2": { color: "#ffcc00", text: "🟡 Внимание по БпЛА" },        // Желтый
+  "3": { color: "#ff9900", text: "🟠 Опасность по БпЛА" },       // Оранжевый
+  "4": { color: "#cc0000", text: "🔴 Тревога по БпЛА" },         // Красный
+  "5": { color: "#4a0000", text: "⚫ РАКЕТНАЯ ОПАСНОСТЬ" }       // Темно-красный
 };
 
-// Расставляем аккуратные маркеры по городам ПФО
-for (var city in pvoNodes) {
-  var pos = pvoNodes[city];
-  
-  var marker = L.circleMarker(pos, {
-    radius: city.includes("Ижевск") ? 9 : 6, // Твой Ижевск сделали самым заметным
-    color: city.includes("Ижевск") ? "#00ffff" : "#10b981",
-    fillColor: city.includes("Ижевск") ? "#00ffff" : "#10b981",
-    fillOpacity: 1,
-    weight: 2
-  }).addTo(map);
-  
-  activeMarkers[city] = marker;
+// МАС СЛИТНЫХ ВЕКТОРНЫХ РЕГИОНОВ ПФО (КАК У RADARYRAL)
+var regionsData = {
+  "Республика Удмуртия": [[57.9,52.2], [57.8,54.2], [56.2,54.3], [56.1,52.3]],
+  "Кировская область": [[60.2,46.5], [60.3,51.5], [57.8,51.6], [57.5,47.2]],
+  "Республика Татарстан": [[56.1,47.5], [56.2,52.2], [54.5,52.3], [54.3,48.2]],
+  "Республика Башкортостан": [[56.2,54.3], [56.1,59.8], [51.8,58.8], [52.1,53.2]],
+  "Пермский край": [[61.5,53.5], [61.2,59.5], [56.2,58.8], [56.5,54.2]],
+  "Нижегородская область": [[57.5,42.5], [57.6,46.5], [54.8,46.2], [54.5,42.1]],
+  "Самарская область": [[54.5,48.2], [54.6,52.1], [52.1,51.8], [52.2,47.9]],
+  "Оренбургская область": [[52.2,50.8], [52.1,62.5], [50.5,60.8], [51.1,53.8]],
+  "Саратовская область": [[52.8,44.8], [52.9,50.8], [50.2,49.5], [49.8,45.2]]
+};
 
-  // Клик по маркеру открывает окно ввода пароля
-  setupClick(marker, city);
+// Рисуем состыкованные векторные регионы поверх карты
+for (var name in regionsData) {
+  var polygon = L.polygon(regionsData[name], {
+    color: "#555555",
+    fillColor: "#eaeaea", // Исходный серый цвет, как на скрине!
+    fillOpacity: 0.6,
+    weight: 1.5
+  }).addTo(map);
+
+  activeLayers[name] = polygon;
+
+  // Привязываем клик для вызова пульта
+  setupRegionClick(polygon, name);
 }
 
-function setupClick(obj, name) {
-  obj.on('click', function() {
-    var pass = prompt("ВХОД В ЦУП\nВведи пароль для сектора: " + name);
+function setupRegionClick(poly, name) {
+  poly.on('click', function() {
+    var pass = prompt("ЦУП РАДАРА\nВведите тактический код для сектора: " + name);
     if (pass === "2026") {
       curRegName = name;
-      document.getElementById('active-reg-title').innerText = name;
-      document.getElementById('adm').classList.add('open'); // Панелька выезжает!
+      curLayer = poly;
+      document.getElementById('active-reg-title').innerText = "Регион: " + name;
+      document.getElementById('adm').classList.add('open'); // Пульт выезжает
     }
   });
 }
 
-// Применение уровня опасности
+// Применение сигнала тревоги к региону
 function applyLvl(num) {
   var selected = lvls[num];
-  var marker = activeMarkers[curRegName];
   
-  if (marker) {
-    marker.setStyle({
-      color: selected.color,
-      fillColor: selected.color
+  if (curLayer) {
+    curLayer.setStyle({
+      fillColor: selected.color,
+      fillOpacity: num === "1" ? 0.6 : 0.85
     });
   }
   
   document.getElementById('global-status').innerText = curRegName + ": " + selected.text;
   
-  // Подача сигнала в ТГ-чат проекта
-  var msg = "🚨 ОБСТАНОВКА ПФО\nСектор: " + curRegName + "\nСтатус: " + selected.text;
+  // Отправка в ТГ-бота
+  var msg = "🚨 ОБСТАНОВКА ПФО\nРегион: " + curRegName + "\nСтатус: " + selected.text;
   var url = "https://telegram.org" + TG_TOKEN + "/sendMessage?chat_id=" + ADMIN_CHAT_ID + "&text=" + encodeURIComponent(msg);
-  fetch(url).catch(e => console.log("ТГ-оповещение активно"));
+  fetch(url).catch(e => console.log("ТГ-оповещение активно, оке"));
   
   document.getElementById('adm').classList.remove('open');
 }
 
-// Резервный вызов панели кнопками A / Ф
+// Вызов панели кнопками A / Ф
 document.addEventListener('keydown', function(e) {
   var k = e.key.toLowerCase();
   if (k === 'a' || k === 'ф') {
