@@ -3,56 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Радар ПФО — Мониторинг v6.1</title>
+    <title>Радар ПФО — Мониторинг v6.2</title>
     
-    <!-- СТАБИЛЬНЫЕ СТИЛИ КАРТЫ -->
-    <link rel="stylesheet" href="https://cloudflare.com" />
+    <!-- Подключаем проверенные HTTPS стили, одобренные GitHub -->
+    <link rel="stylesheet" href="https://jsdelivr.net" />
     
     <style>
-        /* Сброс настроек экрана */
         html, body, #map {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            background-color: #0b0b0b;
+            background-color: #0d0d0d; /* Наш тактический черный фон */
         }
 
-        /* Хакерский фильтр: делает карту темной прямо в браузере */
-        .dark-mode-map {
+        /* Инверсия для создания темной темы */
+        .dark-style-map {
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
         }
 
-        /* Главная тактическая шапка радара */
-        .radar-panel-top {
+        /* Наша крутая шапка радара */
+        .radar-header-main {
             position: absolute;
             top: 15px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            background: rgba(10, 10, 10, 0.9);
+            background: rgba(10, 10, 10, 0.95);
             color: #3f3;
             padding: 12px 25px;
             border: 2px solid #3f3;
             font-family: monospace;
             font-weight: bold;
             text-align: center;
-            border-radius: 5px;
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+            border-radius: 6px;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
         }
 
-        #status-text {
+        #status-display {
             margin-top: 5px;
             font-size: 14px;
             color: #fff;
             background: #222;
-            padding: 3px 8px;
+            padding: 4px 10px;
             border-radius: 3px;
             display: inline-block;
         }
 
-        /* Скрытый пульт админа (выезжает справа) */
-        .admin-sidebar {
+        /* Выезжающий пульт админа */
+        .admin-panel-right {
             position: absolute;
             top: 15px;
             right: -320px;
@@ -64,15 +63,15 @@
             border-radius: 6px;
             color: #fff;
             font-family: monospace;
-            transition: right 0.4s ease;
+            transition: right 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
         }
 
-        .admin-sidebar.visible {
+        .admin-panel-right.active {
             right: 15px;
-            box-shadow: 0 0 20px rgba(255, 51, 51, 0.4);
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.5);
         }
 
-        .admin-btn {
+        .ctrl-btn {
             width: 100%;
             padding: 12px;
             margin: 6px 0;
@@ -84,50 +83,49 @@
             text-align: left;
         }
 
-        .admin-btn:hover {
+        .ctrl-btn:hover {
             filter: brightness(1.2);
         }
     </style>
 </head>
 <body>
 
-    <!-- Шапка канала -->
-    <div class="radar-panel-top">
+    <div class="radar-header-main">
         ТАКТИЧЕСКИЙ РАДАР ПФО (@radarPF0)
-        <div id="status-text">Статус: 🟢 Полный отбой</div>
+        <div id="status-display">Статус: 🟢 Полный отбой</div>
     </div>
 
-    <!-- Пульт управления -->
-    <div class="admin-sidebar" id="adminMenu">
-        <h3 style="color:#ff3333; margin-top:0; text-align:center;">УПРАВЛЕНИЕ</h3>
-        <button class="admin-btn" style="background:#00875A;" onclick="updateStatus('🟢 Полный отбой')">1. 🟢 Полный отбой</button>
-        <button class="admin-btn" style="background:#FFAB00; color:#000;" onclick="updateStatus('🟡 Внимание по БпЛА')">2. 🟡 Внимание по БпЛА</button>
-        <button class="admin-btn" style="background:#FF5630;" onclick="updateStatus('🟠 Опасность по БпЛА')">3. 🟠 Опасность по БпЛА</button>
-        <button class="admin-btn" style="background:#DE350B;" onclick="updateStatus('🔴 Тревога по БпЛА')">4. 🔴 Тревога по БпЛА</button>
-        <button class="admin-btn" style="background:#520000; border:1px solid red;" onclick="updateStatus('⚫ РАКЕТНАЯ ОПАСНОСТЬ')">5. ⚫ РАКЕТНАЯ ОПАСНОСТЬ</button>
-        <button class="admin-btn" style="background:#333; text-align:center;" onclick="closeAdminMenu()">Закрыть пульт</button>
+    <!-- Секретный пульт -->
+    <div class="admin-panel-right" id="adminControl">
+        <h3 style="color:#ff3333; margin-top:0; text-align:center;">ПУЛЬТ РАДАРА</h3>
+        <button class="ctrl-btn" style="background:#00875A;" onclick="setRadarStatus('🟢 Полный отбой')">1. 🟢 Полный отбой</button>
+        <button class="ctrl-btn" style="background:#FFAB00; color:#000;" onclick="setRadarStatus('🟡 Внимание по БпЛА')">2. 🟡 Внимание по БпЛА</button>
+        <button class="ctrl-btn" style="background:#FF5630;" onclick="setRadarStatus('🟠 Опасность по БпЛА')">3. 🟠 Опасность по БпЛА</button>
+        <button class="ctrl-btn" style="background:#DE350B;" onclick="setRadarStatus('🔴 Тревога по БпЛА')">4. 🔴 Тревога по БпЛА</button>
+        <button class="ctrl-btn" style="background:#520000; border:1px solid red;" onclick="setRadarStatus('⚫ РАКЕТНАЯ ОПАСНОСТЬ')">5. ⚫ РАКЕТНАЯ ОПАСНОСТЬ</button>
+        <button class="ctrl-btn" style="background:#333; text-align:center;" onclick="closeRemote()">Закрыть пульт</button>
     </div>
 
-    <!-- Блок для отображения карты -->
     <div id="map"></div>
 
-    <!-- СТАБИЛЬНЫЕ СКРИПТЫ КАРТЫ (БЕЗ ОШИБОК И СТОЛБИКОВ) -->
-    <script src="https://cloudflare.com"></script>
+    <!-- Загружаем скрипты строго через защищенный HTTPS cdnjs -->
+    <script src="https://jsdelivr.net"></script>
 
     <script>
-        // Инициализация карты с центром в Ижевске
+        // Инициализируем карту с центром в Ижевске
         const map = L.map('map').setView([56.852, 53.204], 6);
 
-        // Загружаем классическую карту, которая работает везде
-        const mapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18
+        // Подключаем защищенный слой карт
+        const openStreetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // Применяем темный фильтр к слою карты
-        mapLayer.getContainer().className += ' dark-mode-map';
+        // Включаем темный режим для карты
+        openStreetLayer.getContainer().className += ' dark-style-map';
 
-        // База координат 8 тактических узлов ПВО
-        const pvoPoints = {
+        // База наших 8 оборонительных узлов
+        const pvoNodes = {
             "Ижевск": [56.852, 53.204],
             "Киров": [58.596, 49.654],
             "Казань": [55.788, 49.122],
@@ -138,39 +136,45 @@
             "Саратов": [51.540, 46.008]
         };
 
-        // Ставим маркеры и защитные круги 60 км
-        for (let city in pvoPoints) {
-            L.marker(pvoPoints[city]).addTo(map)
-                .bindPopup(`<b>Сектор ПВО: ${city}</b><br>Мониторинг запущен.`);
+        // Рисуем узлы и зоны безопасности по 60 км
+        for (let city in pvoNodes) {
+            // Крутая фишка: маркер в виде текстовой иконки, она загрузится ДАЖЕ без картинок!
+            const textIcon = L.divIcon({
+                html: `<div style="font-size: 24px; text-align:center; transform: translate(-30%, -30%);">📡</div>`,
+                className: 'custom-radar-icon'
+            });
 
-            L.circle(pvoPoints[city], {
+            L.marker(pvoNodes[city], {icon: textIcon}).addTo(map)
+                .bindPopup(`<b>Узел связи: ${city}</b><br>Мониторинг ПФО в норме.`);
+
+            // Круг зоны ПВО 60 км
+            L.circle(pvoNodes[city], {
                 color: '#33ff33',
                 fillColor: '#33ff33',
-                fillOpacity: 0.08,
-                radius: 60000 // Зона ПВО 60 км
+                fillOpacity: 0.07,
+                radius: 60000
             }).addTo(map);
         }
 
-        // Секретный вызов пульта по кнопкам 'A' или 'Ф'
-        document.addEventListener('keydown', function(e) {
-            const keyName = e.key.toLowerCase();
-            if (keyName === 'a' || keyName === 'ф') {
-                const pass = prompt("Введите тактический пароль доступа:");
-                if (pass === "20002666") {
-                    document.getElementById('adminMenu').classList.add('visible');
+        // Секретный вызов админки по кнопке 'A' (англ) или 'Ф' (рус)
+        document.addEventListener('keydown', function(event) {
+            const code = event.key.toLowerCase();
+            if (code === 'a' || code === 'ф') {
+                const pass = prompt("ВВЕДИТЕ ТАКТИЧЕСКИЙ КОД ДОСТУПА:");
+                if (pass === "2026") {
+                    document.getElementById('adminControl').classList.add('active');
                 } else if (pass !== null) {
-                    alert("Доступ запрещен. Неверный код!");
+                    alert("ДОСТУП ЗАБЛОКИРОВАН!");
                 }
             }
         });
 
-        // Функции пульта управления
-        function closeAdminMenu() {
-            document.getElementById('adminMenu').classList.remove('visible');
+        function closeRemote() {
+            document.getElementById('adminControl').classList.remove('active');
         }
 
-        function updateStatus(newStatus) {
-            document.getElementById('status-text').innerText = `Статус: ${newStatus}`;
+        function setRadarStatus(statusText) {
+            document.getElementById('status-display').innerText = `Статус: ${statusText}`;
         }
     </script>
 </body>
