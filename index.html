@@ -2,161 +2,210 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Мониторинг ПФО от @radarPF0</title>
-    <!-- Подключаем надежные Яндекс.Карты, которые 100% работают в РФ -->
-    <script src="https://yandex.ru" type="text/javascript"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Радар ПФО — Мониторинг</title>
+    <!-- Подключаем Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com" />
     <style>
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Segoe UI', Arial, sans-serif; background-color: #0b0b0c; color: white; display: flex; overflow: hidden; }
-        #map { flex: 1; height: 100%; width: 100%; z-index: 1; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #000;
+        }
+        /* Стили карты */
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        /* Шапка канала */
+        .header-panel {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 10, 0.85);
+            border: 2px solid #3f3;
+            color: #3f3;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+            pointer-events: none;
+        }
+        /* Индикатор текущего статуса */
+        #status-indicator {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #fff;
+            background: #222;
+            padding: 3px 8px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        /* Скрытая админка (пульт управления) */
+        .admin-panel {
+            position: absolute;
+            top: 20px;
+            right: -320px; /* Изначально спрятана за экраном */
+            width: 280px;
+            background: rgba(15, 15, 15, 0.95);
+            border: 2px solid #ff3333;
+            border-radius: 8px;
+            padding: 15px;
+            color: #fff;
+            z-index: 1000;
+            transition: right 0.5s ease;
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.4);
+        }
+        .admin-panel.active {
+            right: 20px; /* Выезжает при вводе пароля */
+        }
+        .admin-panel h3 {
+            margin-top: 0;
+            color: #ff3333;
+            text-align: center;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+        .btn-status {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            text-align: left;
+            transition: transform 0.1s;
+        }
+        .btn-status:hover {
+            transform: scale(1.02);
+            filter: brightness(1.2);
+        }
+        /* Цвета кнопок уровней опасности */
+        .lvl-1 { background-color: #00875A; } /* Полный отбой */
+        .lvl-2 { background-color: #FFAB00; color: #000; } /* Внимание по БпЛА */
+        .lvl-3 { background-color: #FF5630; } /* Опасность по БпЛА */
+        .lvl-4 { background-color: #DE350B; } /* Тревога по БпЛА */
+        .lvl-5 { background-color: #520000; border: 1px solid #ff0000; } /* РАКЕТНАЯ ОПАСНОСТЬ */
         
-        /* Кнопка скрытия/показа панели */
-        .toggle-btn { position: absolute; right: 20px; top: 20px; z-index: 100; background-color: #16161a; color: #00e5ff; border: 1px solid #2d2d35; padding: 10px 15px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: all 0.2s; display: none; }
-        .toggle-btn:hover { background-color: #2d2d35; }
-
-        /* Панель управления (Изначально скрыта для всех, пока не введен пароль) */
-        .sidebar { width: 330px; min-width: 330px; background-color: #111113; border-left: 2px solid #222227; padding: 20px; display: none; flex-direction: column; z-index: 10; box-shadow: -5px 0 15px rgba(0,0,0,0.5); box-sizing: border-box; }
-        h1 { font-size: 15px; margin-top: 0; color: #00e5ff; border-bottom: 1px solid #222227; padding-bottom: 10px; text-align: center; font-weight: bold; letter-spacing: 1px; }
-        label { font-size: 11px; color: #8a8a93; margin-top: 12px; display: block; text-align: left; font-weight: 500; }
-        
-        select, button { width: 100%; padding: 11px; margin: 5px 0; font-size: 13px; font-weight: bold; border-radius: 6px; border: none; box-sizing: border-box; }
-        select { background-color: #16161a; color: white; border: 1px solid #2d2d35; cursor: pointer; }
-        button { cursor: pointer; transition: transform 0.1s; color: white; }
-        button:active { transform: scale(0.98); }
-        
-        .btn-safe { background-color: #2e7d32; }
-        .btn-attention { background-color: #fbc02d; color: black; }
-        .btn-bpla { background-color: #ef6c00; }
-        .btn-alarm { background-color: #c62828; }
-        .btn-rocket { background-color: #4a0002; border: 1px solid #ff1744; }
-        .btn-clear { background-color: #27272a; border: 1px dashed #3f3f46; margin-top: 12px; }
-        
-        .footer-text { font-size: 11px; color: #44444f; text-anchor: middle; text-align: center; margin-top: auto; }
+        .close-btn {
+            background: #333;
+            color: #fff;
+            border: none;
+            width: 100%;
+            padding: 5px;
+            margin-top: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
-    
-    <!-- ТАКТИЧЕСКИЕ КНОПКИ СИНХРОНИЗАЦИИ -->
-    <button class="toggle-btn" id="togglePanelBtn" onclick="toggleSidebar()">👁️ Скрыть пульт</button>
-
-    <div class="sidebar" id="adminSidebar">
-        <h1>⚡ МОНИТОР ПФО v5.5 (АДМИН)</h1>
-        
-        <label for="city-select">Выберите сектор контроля:</label>
-        <select id="city-select" onchange="focusCity()">
-            <option value="izhevsk">📍 Ижевск (Удмуртия)</option>
-            <option value="kirov">📍 Киров (Кировская обл.)</option>
-            <option value="kazan">📍 Казань (Татарстан)</option>
-            <option value="samara">📍 Самара (Самарская обл.)</option>
-            <option value="ufa">📍 Уфа (Башкирия)</option>
-            <option value="perm">📍 Пермь (Пермский край)</option>
-            <option value="nn">📍 Нижний Новгород</option>
-            <option value="saratov">📍 Саратов (Саратовская обл.)</option>
-        </select>
-
-        <label>Установить тактический статус:</label>
-        <button class="btn-safe" onclick="applyStatus('safe')">🟢 1. Полный отбой</button>
-        <button class="btn-attention" onclick="applyStatus('attention')">🟡 2. Внимание по БпЛА</button>
-        <button class="btn-bpla" onclick="applyStatus('bpla')">🟠 3. Опасность по БпЛА</button>
-        <button class="btn-alarm" onclick="applyStatus('alarm')">🔴 4. Тревога по БпЛА</button>
-        <button class="btn-rocket" onclick="applyStatus('rocket')">⚫ 5. РАКЕТНАЯ ОПАСНОСТЬ</button>
-        
-        <button class="btn-clear" onclick="resetAll()">🔄 Сбросить все сектора</button>
-        <div class="footer-text">Радар ПФО • Доступ: Разработчик Ярик</div>
+    <div class="header-panel">
+        ТАКТИЧЕСКИЙ РАДАР ПФО (@radarPF0)
+        <div id="status-indicator">Статус: 🟢 Полный отбой</div>
     </div>
 
-    <script type="text/javascript">
-        let myMap;
-        
-        const statusColors = {
-            'safe': { fill: '#2e7d32', stroke: '#1b5e20', opacity: 0.15 },
-            'attention': { fill: '#fbc02d', stroke: '#f57f17', opacity: 0.3 },
-            'bpla': { fill: '#ef6c00', stroke: '#e65100', opacity: 0.4 },
-            'alarm': { fill: '#c62828', stroke: '#b71c1c', opacity: 0.45 },
-            'rocket': { fill: '#4a0002', stroke: '#ff1744', opacity: 0.6 }
+    <!-- Скрытый правый пульт -->
+    <div class="admin-panel" id="adminPanel">
+        <h3>ОБСТАНОВКА ПФО</h3>
+        <button class="btn-status lvl-1" onclick="changeStatus('🟢 Полный отбой', '#00875a')">1. 🟢 Полный отбой</button>
+        <button class="btn-status lvl-2" onclick="changeStatus('🟡 Внимание по БпЛА', '#FFAB00')">2. 🟡 Внимание по БпЛА</button>
+        <button class="btn-status lvl-3" onclick="changeStatus('🟠 Опасность по БпЛА', '#FF5630')">3. 🟠 Опасность по БпЛА</button>
+        <button class="btn-status lvl-4" onclick="changeStatus('🔴 Тревога по БпЛА', '#DE350B')">4. 🔴 Тревога по БпЛА</button>
+        <button class="btn-status lvl-5" onclick="changeStatus('⚫ РАКЕТНАЯ ОПАСНОСТЬ', '#520000')">5. ⚫ РАКЕТНАЯ ОПАСНОСТЬ</button>
+        <button class="close-btn" onclick="toggleAdminPanel(false)">Закрыть пульт</button>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Подключаем Leaflet JS -->
+    <script href="https://unpkg.com"></script>
+    <script>
+        // Инициализируем карту с центром в ПФО (примерно Самара/Казань)
+        const map = L.map('map').setView([55.0, 52.0], 6);
+
+        // Ставим топовую бесплатную темную тему, которая не лагает в РФ
+        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        // Координаты наших 8 тактических узлов ПВО
+        const cities = {
+            "Ижевск": [56.852, 53.204],
+            "Киров": [58.596, 49.654],
+            "Казань": [55.788, 49.122],
+            "Самара": [53.200, 50.150],
+            "Уфа": [54.738, 55.972],
+            "Пермь": [58.010, 56.250],
+            "Нижний Новгород": [56.328, 44.002],
+            "Саратов": [51.540, 46.008]
         };
 
-        const sectors = {
-            "izhevsk": { name: "Ижевск (Удмуртия)", coords: [56.85, 53.20], circle: null },
-            "kirov": { name: "Киров", coords: [58.60, 49.66], circle: null },
-            "kazan": { name: "Казань (Татарстан)", coords: [55.79, 49.11], circle: null },
-            "samara": { name: "Самара", coords: [53.20, 50.15], circle: null },
-            "ufa": { name: "Уфа (Башкирия)", coords: [54.74, 55.97], circle: null },
-            "perm": { name: "Пермь", coords: [58.01, 56.25], circle: null },
-            "nn": { name: "Нижний Новгород", coords: [56.32, 44.00], circle: null },
-            "saratov": { name: "Саратов", coords: [51.54, 46.03], circle: null }
-        };
+        // Отрисовка зон ПВО радиусом 60 км (60000 метров)
+        for (let city in cities) {
+            // Ставим маркер города
+            L.marker(cities[city]).addTo(map)
+                .bindPopup(`<b>${city}</b><br>Узел мониторинга ПВО`);
 
-        ymaps.ready(init);
-        function init() {
-            myMap = new ymaps.Map("map", {
-                center: [56.85, 53.20],
-                zoom: 6,
-                controls: ['zoomControl']
-            });
-
-            // Стильный темный ночной фильтр для карты
-            myMap.panes.get('ground').getElement().style.filter = 'brightness(35%) contrast(130%) saturate(60%) invert(100%) hue-rotate(180deg)';
-
-            for (let key in sectors) {
-                sectors[key].circle = new ymaps.Circle([sectors[key].coords, 60000], {
-                    balloonContent: `<b>Сектор: ${sectors[key].name}</b><br>Статус: Чисто`
-                }, {
-                    fillColor: statusColors['safe'].fill,
-                    strokeColor: statusColors['safe'].stroke,
-                    fillOpacity: statusColors['safe'].opacity,
-                    strokeWidth: 1.5
-                });
-                myMap.geoObjects.add(sectors[key].circle);
-            }
+            // Рисуем тактический круг защиты
+            L.circle(cities[city], {
+                color: '#33ff33',
+                fillColor: '#33ff33',
+                fillOpacity: 0.08,
+                radius: 60000 // 60 км
+            }).addTo(map);
         }
 
-        function applyStatus(status) {
-            const currentKey = document.getElementById("city-select").value;
-            const circle = sectors[currentKey].circle;
-            const config = statusColors[status];
-            circle.options.set({ fillColor: config.fill, strokeColor: config.stroke, fillOpacity: config.opacity });
-        }
-
-        function focusCity() {
-            const currentKey = document.getElementById("city-select").value;
-            myMap.setCenter(sectors[currentKey].coords, 7, { duration: 300 });
-        }
-
-        function resetAll() {
-            for (let key in sectors) {
-                sectors[key].circle.options.set({ fillColor: statusColors['safe'].fill, strokeColor: statusColors['safe'].stroke, fillOpacity: statusColors['safe'].opacity });
-            }
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById("adminSidebar");
-            const btn = document.getElementById("togglePanelBtn");
-            if (sidebar.style.display === "flex") {
-                sidebar.style.display = "none";
-                btn.innerText = "👁️ Показать пульт";
-            } else {
-                sidebar.style.display = "flex";
-                btn.innerText = "👁️ Скрыть пульт";
-            }
-        }
-
-        // 🔐 ХАКЕРСКАЯ ЗАЩИТА: Активация пульта по секретной кнопке
-        // Зайди на сайт и нажми на клавиатуре английскую букву 'A' (Админ)
-        window.addEventListener('keydown', function(event) {
-            if (event.key === 'a' || event.key === 'ф' || event.key === 'A') {
-                // Твой секретный пароль, можешь изменить его ниже:
-                let password = prompt("Введите секретный код доступа разработчика:");
-                if (password === "123123qwe123123qwe123123") {
-                    document.getElementById("adminSidebar").style.display = "flex";
-                    document.getElementById("togglePanelBtn").style.display = "block";
-                    alert("🔓 Доступ разрешен! Административная панель активирована.");
-                } else {
-                    alert("❌ Отказано в доступе! Вы обычный гражданский.");
+        // Логика секретной админки по кнопке 'A' (английская) или 'Ф' (русская)
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'a' || event.key === 'A' || event.key === 'ф' || event.key === 'Ф') {
+                const password = prompt("Введи тактический код доступа:");
+                if (password === "200266") {
+                    toggleAdminPanel(true);
+                } else if (password !== null) {
+                    alert("Доступ запрещен! Код неверный.");
                 }
             }
         });
+
+        function toggleAdminPanel(show) {
+            const panel = document.getElementById('adminPanel');
+            if (show) {
+                panel.classList.add('active');
+            } else {
+                panel.classList.remove('active');
+            }
+        }
+
+        // Функция смены статусов на пульте
+        function changeStatus(statusText, color) {
+            const indicator = document.getElementById('status-indicator');
+            indicator.innerText = `Статус: ${statusText}`;
+            
+            // Если включена ракетная опасность, подсветим рамку индикатора тревожным цветом
+            if(statusText.includes('РАКЕТНАЯ')) {
+                indicator.style.border = "1px solid red";
+                indicator.style.background = "#200";
+            } else {
+                indicator.style.border = "none";
+                indicator.style.background = "#222";
+            }
+        }
     </script>
 </body>
 </html>
