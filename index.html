@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Радар ПФО — Мониторинг v6.3</title>
+    <title>Радар ПФО — Мониторинг v6.4</title>
     
-    <!-- Надежные стили карты через HTTPS -->
-    <link rel="stylesheet" href="https://jsdelivr.net" />
+    <!-- Используем зеркальные стили, которые всегда доступны в РФ -->
+    <link rel="stylesheet" href="https://cloudflare.com" />
     
     <style>
         html, body, #map {
@@ -14,10 +14,10 @@
             padding: 0;
             width: 100%;
             height: 100%;
-            background-color: #0f111a; /* Глубокий темный фон */
+            background-color: #0b0f19; /* Наш фирменный темный фон */
         }
 
-        /* Тактическая шапка радара */
+        /* Наша тактическая шапка радара */
         .radar-header-main {
             position: absolute;
             top: 15px;
@@ -25,14 +25,14 @@
             transform: translateX(-50%);
             z-index: 1000;
             background: rgba(15, 23, 42, 0.95);
-            color: #38bdf8;
+            color: #10b981;
             padding: 12px 25px;
-            border: 2px solid #38bdf8;
+            border: 2px solid #10b981;
             font-family: monospace;
             font-weight: bold;
             text-align: center;
             border-radius: 6px;
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
         }
 
         #status-display {
@@ -90,7 +90,7 @@
         <div id="status-display">Статус: 🟢 Полный отбой</div>
     </div>
 
-    <!-- Секретный пульт -->
+    <!-- Секретный пульт управления -->
     <div class="admin-panel-right" id="adminControl">
         <h3 style="color:#ef4444; margin-top:0; text-align:center;">ПУЛЬТ РАДАРА</h3>
         <button class="ctrl-btn" style="background:#10b981;" onclick="setRadarStatus('🟢 Полный отбой')">1. 🟢 Полный отбой</button>
@@ -103,20 +103,20 @@
 
     <div id="map"></div>
 
-    <!-- Скрипты через HTTPS -->
-    <script src="https://jsdelivr.net"></script>
+    <!-- Зеркальный скрипт Leaflet из надежного источника -->
+    <script src="https://cloudflare.com"></script>
 
     <script>
-        // Центр карты — Ижевск
+        // Инициализируем карту, наводим фокус прямо на Ижевск
         const map = L.map('map').setView([56.852, 53.204], 6);
 
-        // Родная темная подложка, без ломающих браузер фильтров инверсии
-        L.tileLayer('https://stadiamaps.com{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            attribution: '&copy; Stadia Maps &copy; OpenStreetMap'
+        // ПОДКЛЮЧАЕМ НЕУБИВАЕМЫЕ СЕРВЕРА 2ГИС. Работает без токенов, ключей и блокировок в РФ!
+        L.tileLayer('https://2gis.com{x}&y={y}&z={z}', {
+            maxZoom: 18,
+            attribution: '&copy; 2ГИС'
         }).addTo(map);
 
-        // Наша база 8 узлов
+        // База наших 8 оборонительных узлов ПФО
         const pvoNodes = {
             "Ижевск": [56.852, 53.204],
             "Киров": [58.596, 49.654],
@@ -128,13 +128,13 @@
             "Саратов": [51.540, 46.008]
         };
 
-        // Текстовая иконка антенны
+        // Текстовая иконка антенны (не требует загрузки картинок)
         const textIcon = L.divIcon({
             html: `<div style="font-size: 22px; transform: translate(-30%, -30%);">📡</div>`,
             className: 'custom-radar-icon'
         });
 
-        // Рисуем сетку
+        // Наносим сетку радаров на карту 2ГИС
         for (let city in pvoNodes) {
             L.marker(pvoNodes[city], {icon: textIcon}).addTo(map)
                 .bindPopup(`<b>Узел связи: ${city}</b><br>Мониторинг активен.`);
@@ -142,17 +142,17 @@
             L.circle(pvoNodes[city], {
                 color: '#10b981',
                 fillColor: '#10b981',
-                fillOpacity: 0.08,
-                radius: 60000 // 60 км
+                fillOpacity: 0.12,
+                radius: 60000 // Радиус зоны контроля 60 км
             }).addTo(map);
         }
 
-        // Вызов пульта (A / Ф)
+        // Секретный вызов админки по кнопке 'A' (англ) или 'Ф' (рус)
         document.addEventListener('keydown', function(event) {
             const code = event.key.toLowerCase();
             if (code === 'a' || code === 'ф') {
                 const pass = prompt("ВВЕДИТЕ ТАКТИЧЕСКИЙ КОД ДОСТУПА:");
-                if (pass === "042014") {
+                if (pass === "2026") {
                     document.getElementById('adminControl').classList.add('active');
                 } else if (pass !== null) {
                     alert("ДОСТУП ЗАБЛОКИРОВАН!");
