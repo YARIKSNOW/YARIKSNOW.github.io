@@ -1,172 +1,212 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Радар ПФО — Мониторинг v6.4</title>
-    
-    <!-- Используем зеркальные стили, которые всегда доступны в РФ -->
-    <link rel="stylesheet" href="https://cloudflare.com" />
-    
-    <style>
-        html, body, #map {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #0b0f19; /* Наш фирменный темный фон */
-        }
-
-        /* Наша тактическая шапка радара */
-        .radar-header-main {
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(15, 23, 42, 0.95);
-            color: #10b981;
-            padding: 12px 25px;
-            border: 2px solid #10b981;
-            font-family: monospace;
-            font-weight: bold;
-            text-align: center;
-            border-radius: 6px;
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-        }
-
-        #status-display {
-            margin-top: 5px;
-            font-size: 14px;
-            color: #fff;
-            background: #1e293b;
-            padding: 4px 10px;
-            border-radius: 3px;
-            display: inline-block;
-        }
-
-        /* Выезжающий пульт админа */
-        .admin-panel-right {
-            position: absolute;
-            top: 15px;
-            right: -320px;
-            width: 260px;
-            z-index: 1000;
-            background: rgba(15, 23, 42, 0.95);
-            border: 2px solid #ef4444;
-            padding: 15px;
-            border-radius: 6px;
-            color: #fff;
-            font-family: monospace;
-            transition: right 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
-        }
-
-        .admin-panel-right.active {
-            right: 15px;
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
-        }
-
-        .ctrl-btn {
-            width: 100%;
-            padding: 12px;
-            margin: 6px 0;
-            border: none;
-            border-radius: 4px;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            text-align: left;
-        }
-
-        .ctrl-btn:hover {
-            filter: brightness(1.2);
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Радар ПФО v7.1</title>
+<style>
+/* 1. НАСТРОЙКА ЭКРАНА */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #060814;
+  font-family: monospace;
+  overflow: hidden;
+}
+/* 2. ШАПКА РАДАРА */
+.header {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99;
+  background: #0a1024;
+  color: #3f3;
+  padding: 10px;
+  border: 2px solid #3f3;
+  border-radius: 6px;
+  text-align: center;
+}
+/* 3. АДМИНКА */
+.panel {
+  position: absolute;
+  top: 15px;
+  right: -320px;
+  width: 240px;
+  z-index: 99;
+  background: #0a0f1e;
+  border: 2px solid #f33;
+  padding: 15px;
+  color: #fff;
+  transition: 0.4s;
+}
+.panel.open {
+  right: 15px;
+}
+.btn {
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+  border: none;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+/* 4. СТИЛИ СХЕМЫ ПФО */
+svg {
+  width: 100%;
+  height: 100%;
+}
+rect {
+  fill: #111827;
+  stroke: #1e293b;
+  stroke-width: 2;
+}
+rect:hover {
+  fill: #1f293d;
+  stroke: #3f3;
+}
+text {
+  fill: #475569;
+  font-size: 12px;
+  font-weight: bold;
+}
+.zone {
+  fill: #3f3;
+  fill-opacity: 0.05;
+  stroke: #3f3;
+  stroke-width: 1.5;
+  stroke-dasharray: 4;
+}
+.dot {
+  fill: #f33;
+  stroke: #fff;
+}
+</style>
 </head>
 <body>
 
-    <div class="radar-header-main">
-        ТАКТИЧЕСКИЙ РАДАР ПФО (@radarPF0)
-        <div id="status-display">Статус: 🟢 Полный отбой</div>
-    </div>
+<!-- БЛОК ШАПКИ -->
+<div class="header">
+  РАДАР ПФО (@radarPF0)
+  <div id="status">Статус: 🟢 Отбой</div>
+</div>
 
-    <!-- Секретный пульт управления -->
-    <div class="admin-panel-right" id="adminControl">
-        <h3 style="color:#ef4444; margin-top:0; text-align:center;">ПУЛЬТ РАДАРА</h3>
-        <button class="ctrl-btn" style="background:#10b981;" onclick="setRadarStatus('🟢 Полный отбой')">1. 🟢 Полный отбой</button>
-        <button class="ctrl-btn" style="background:#f59e0b; color:#000;" onclick="setRadarStatus('🟡 Внимание по БпЛА')">2. 🟡 Внимание по БпЛА</button>
-        <button class="ctrl-btn" style="background:#f97316;" onclick="setRadarStatus('🟠 Опасность по БпЛА')">3. 🟠 Опасность по БпЛА</button>
-        <button class="ctrl-btn" style="background:#ef4444;" onclick="setRadarStatus('🔴 Тревога по БпЛА')">4. 🔴 Тревога по БпЛА</button>
-        <button class="ctrl-btn" style="background:#450a0a; border:1px solid #ef4444;" onclick="setRadarStatus('⚫ РАКЕТНАЯ ОПАСНОСТЬ')">5. ⚫ РАКЕТНАЯ ОПАСНОСТЬ</button>
-        <button class="ctrl-btn" style="background:#334155; text-align:center;" onclick="closeRemote()">Закрыть пульт</button>
-    </div>
+<!-- БЛОК ПУЛЬТА -->
+<div class="panel" id="adm">
+  <h3 style="color:#f33;margin:0;">ПУЛЬТ</h3>
+  <button class="btn" style="background:#00875A;" onclick="setLvl('🟢 Отбой','#3f3')">1. Отбой</button>
+  <button class="btn" style="background:#FFAB00;color:#000;" onclick="setLvl('🟡 Внимание','#FFAB00')">2. Внимание</button>
+  <button class="btn" style="background:#FF5630;" onclick="setLvl('🟠 Опасность','#FF5630')">3. Опасность</button>
+  <button class="btn" style="background:#DE350B;" onclick="setLvl('🔴 Тревога','#DE350B')">4. Тревога</button>
+  <button class="btn" style="background:#520000;" onclick="setLvl('⚫ РАКЕТА','#f33')">5. РАКЕТА</button>
+</div>
 
-    <div id="map"></div>
+<!-- АВТОНОМНАЯ СХЕМА РЕГИОНОВ ПФО -->
+<svg viewBox="0 0 800 600">
 
-    <!-- Зеркальный скрипт Leaflet из надежного источника -->
-    <script src="https://cloudflare.com"></script>
+  <!-- КАРТА РЕГИОНОВ (СТОЛБИК) -->
+  <rect x="80" y="220" width="110" height="90" />
+  <text x="90" y="270">Нижегородская</text>
 
-    <script>
-        // Инициализируем карту, наводим фокус прямо на Ижевск
-        const map = L.map('map').setView([56.852, 53.204], 6);
+  <rect x="120" y="320" width="80" height="60" />
+  <text x="135" y="355">Мордовия</text>
 
-        // ПОДКЛЮЧАЕМ НЕУБИВАЕМЫЕ СЕРВЕРА 2ГИС. Работает без токенов, ключей и блокировок в РФ!
-        L.tileLayer('https://2gis.com{x}&y={y}&z={z}', {
-            maxZoom: 18,
-            attribution: '&copy; 2ГИС'
-        }).addTo(map);
+  <rect x="90" y="390" width="95" height="70" />
+  <text x="110" y="430">Пензенская</text>
 
-        // База наших 8 оборонительных узлов ПФО
-        const pvoNodes = {
-            "Ижевск": [56.852, 53.204],
-            "Киров": [58.596, 49.654],
-            "Казань": [55.788, 49.122],
-            "Самара": [53.200, 50.150],
-            "Уфа": [54.738, 55.972],
-            "Пермь": [58.010, 56.250],
-            "Нижний Новгород": [56.328, 44.002],
-            "Саратов": [51.540, 46.008]
-        };
+  <rect x="210" y="80" width="130" height="150" />
+  <text x="250" y="160">Кировская</text>
 
-        // Текстовая иконка антенны (не требует загрузки картинок)
-        const textIcon = L.divIcon({
-            html: `<div style="font-size: 22px; transform: translate(-30%, -30%);">📡</div>`,
-            className: 'custom-radar-icon'
-        });
+  <rect x="360" y="50" width="140" height="160" />
+  <text x="410" y="130">Пермский край</text>
 
-        // Наносим сетку радаров на карту 2ГИС
-        for (let city in pvoNodes) {
-            L.marker(pvoNodes[city], {icon: textIcon}).addTo(map)
-                .bindPopup(`<b>Узел связи: ${city}</b><br>Мониторинг активен.`);
+  <rect x="360" y="220" width="90" height="100" style="stroke:#0ff;" />
+  <text x="375" y="275" style="fill:#0ff;">УДМУРТИЯ</text>
 
-            L.circle(pvoNodes[city], {
-                color: '#10b981',
-                fillColor: '#10b981',
-                fillOpacity: 0.12,
-                radius: 60000 // Радиус зоны контроля 60 км
-            }).addTo(map);
-        }
+  <rect x="210" y="240" width="65" height="50" />
+  <text x="220" y="270">Марий Эл</text>
 
-        // Секретный вызов админки по кнопке 'A' (англ) или 'Ф' (рус)
-        document.addEventListener('keydown', function(event) {
-            const code = event.key.toLowerCase();
-            if (code === 'a' || code === 'ф') {
-                const pass = prompt("ВВЕДИТЕ ТАКТИЧЕСКИЙ КОД ДОСТУПА:");
-                if (pass === "2026") {
-                    document.getElementById('adminControl').classList.add('active');
-                } else if (pass !== null) {
-                    alert("ДОСТУП ЗАБЛОКИРОВАН!");
-                }
-            }
-        });
+  <rect x="210" y="300" width="65" height="50" />
+  <text x="223" y="330">Чувашия</text>
 
-        function closeRemote() {
-            document.getElementById('adminControl').classList.remove('active');
-        }
+  <rect x="285" y="270" width="110" height="80" />
+  <text x="315" y="315">Татарстан</text>
 
-        function setRadarStatus(statusText) {
-            document.getElementById('status-display').innerText = `Статус: ${statusText}`;
-        }
-    </script>
+  <rect x="460" y="230" width="130" height="140" />
+  <text x="495" y="300">Башкортостан</text>
+
+  <rect x="210" y="365" width="85" height="75" />
+  <text x="220" y="410">Ульяновская</text>
+
+  <rect x="305" y="365" width="100" height="85" />
+  <text x="325" y="410">Самарская</text>
+
+  <rect x="200" y="460" width="150" height="100" />
+  <text x="245" y="515">Саратовская</text>
+
+  <rect x="370" y="460" width="230" height="110" />
+  <text x="450" y="520">Оренбургская</text>
+
+  <!-- НАШИ ТОЧКИ И КРУГИ ПВО ПФО -->
+  <circle class="zone" cx="405" cy="265" r="55" />
+  <circle class="dot" cx="405" cy="265" r="6" style="fill:#0ff;" />
+  <text x="415" y="260" style="fill:#0ff;">ИЖЕВСК</text>
+
+  <circle class="zone" cx="275" cy="180" r="55" />
+  <circle class="dot" cx="275" cy="180" r="5" />
+  <text x="285" y="185" style="fill:#fff;">Киров</text>
+
+  <circle class="zone" cx="320" cy="300" r="55" />
+  <circle class="dot" cx="320" cy="300" r="5" />
+  <text x="310" y="290" style="fill:#fff;">Казань</text>
+
+  <circle class="zone" cx="430" cy="140" r="55" />
+  <circle class="dot" cx="430" cy="140" r="5" />
+  <text x="440" y="145" style="fill:#fff;">Пермь</text>
+
+  <circle class="zone" cx="510" cy="300" r="55" />
+  <circle class="dot" cx="510" cy="300" r="5" />
+  <text x="520" y="305" style="fill:#fff;">Уфа</text>
+
+  <circle class="zone" cx="350" cy="410" r="55" />
+  <circle class="dot" cx="350" cy="410" r="5" />
+  <text x="360" y="415" style="fill:#fff;">Самара</text>
+
+  <circle class="zone" cx="150" cy="270" r="55" />
+  <circle class="dot" cx="150" cy="270" r="5" />
+  <text x="110" y="255" style="fill:#fff;">Н.Новгород</text>
+
+  <circle class="zone" cx="270" cy="500" r="55" />
+  <circle class="dot" cx="270" cy="500" r="5" />
+  <text x="280" y="505" style="fill:#fff;">Саратов</text>
+
+</svg>
+
+<!-- ДВИЖОК СКРИПТА (СТРОГО ПО СТОЛБИКАМ) -->
+<script>
+// ВЫЗОВ АДМИНКИ НА A ИЛИ Ф
+document.addEventListener('keydown', function(e) {
+  var k = e.key.toLowerCase();
+  if (k === 'a' || k === 'ф') {
+    var p = prompt("ПАРОЛЬ:");
+    if (p === "2026") {
+      document.getElementById('adm').classList.add('open');
+    }
+  }
+});
+
+// СМЕНА СТАТУСА И ЦВЕТА ЗОН ПВО
+function setLvl(txt, col) {
+  document.getElementById('status').innerText = 'Статус: ' + txt;
+  var zs = document.querySelectorAll('.zone');
+  zs.forEach(function(z) {
+    z.style.stroke = col;
+    z.style.fill = col;
+  });
+}
+</script>
+
 </body>
 </html>
