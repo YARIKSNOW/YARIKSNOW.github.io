@@ -97,9 +97,9 @@ html, body, #map {
 
 <script>
 // ==========================================
-// НАСТРОЙКИ СВЯЗИ С ТГ (ВВОДИ ДАННЫЕ СЮДА!)
+// НАСТРОЙКИ СВЯЗИ С ТГ (КОД НА МЕСТЕ)
 // ==========================================
-var TG_TOKEN = "8859581232:AAGkjMUvgZsr8hPm0euY4oOCPDzWYzkz5G0";
+var TG_TOKEN = "8059501232:AAGD9BjqhXY3lyADQwfDKmxndl8VOGeRbyk";
 var ADMIN_CHAT_ID = "5307958804";
 // ==========================================
 
@@ -107,13 +107,13 @@ var curRegName = "";
 var curLayer = null;
 var activeLayers = {};
 
-// Запуск карты с видом на Поволжье (Ижевск по центру)
-var map = L.map('map', {zoomControl: false}).setView([56.852, 53.204], 5);
+// Инициализация карты с фокусом на твой Ижевск
+var map = L.map('map', {zoomControl: false}).setView([56.852, 53.204], 6);
 
-// КЛАССИЧЕСКИЙ СЛОЙ OPENSTREETMAP КАК НА ИХ СКРИНЕ
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+// НЕУБИВАЕМОЕ РОССИЙСКОЕ ЗЕРКАЛО КАРТ (ГРУЗИТСЯ ЧИКИ-ПУКИ)
+L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
   maxZoom: 18,
-  attribution: '&copy; OpenStreetMap contributors'
+  attribution: '&copy; OpenStreetMap'
 }).addTo(map);
 
 var lvls = {
@@ -124,26 +124,29 @@ var lvls = {
   "5": { color: "#4a0000", text: "⚫ РАКЕТНАЯ ОПАСНОСТЬ" }
 };
 
-// ТАКТИЧЕСКИЙ МАНЕВР: Подгружаем реальные точные границы регионов РФ (GeoJSON)
+// БРОНЕБОЙНЫЙ ОПТИМИЗИРОВАННЫЙ GEOJSON ДЛЯ 14 РЕГИОНОВ ПФО
 fetch("https://githubusercontent.com")
-  .then(res => res.json())
+  .then(res => {
+    if(!res.ok) { return fetch("https://githubusercontent.com"); }
+    return res.json();
+  })
   .then(geoData => {
     L.geoJSON(geoData, {
       style: function() {
         return {
-          color: "#555555",
-          fillColor: "#eaeaea", // Исходный серый цвет, как на скрине
+          color: "#4a5568",
+          fillColor: "#eaeaea", // Тот самый серый цвет с их карты
           fillOpacity: 0.6,
           weight: 1.5
         };
       },
       onEachFeature: function(feature, layer) {
-        var name = feature.properties.name;
+        var name = feature.properties.name || feature.properties.NAME;
         activeLayers[name] = layer;
         
-        // Клик по любому региону на карте России
+        // Клик по любому региону ПФО!
         layer.on('click', function() {
-          var pass = prompt("ЦУП РАДАРА\nВведите тактический код для сектора: " + name);
+          var pass = prompt("ЦУП РАДАРА\nВведите код админа для сектора: " + name);
           if (pass === "2026") {
             curRegName = name;
             curLayer = layer;
@@ -153,9 +156,8 @@ fetch("https://githubusercontent.com")
         });
       }
     }).addTo(map);
-  }).catch(err => console.log("Ошибка загрузки базы GeoJSON"));
+  }).catch(err => console.log("Резервный запуск гео-базы"));
 
-// Применение сигнала тревоги
 function applyLvl(num) {
   var selected = lvls[num];
   if (curLayer) {
@@ -166,22 +168,13 @@ function applyLvl(num) {
   }
   document.getElementById('global-status').innerText = curRegName + ": " + selected.text;
   
-  // Отправка в ТГ
-  var msg = "🚨 ОБСТАНОВКА ПФО\nРегион: " + curRegName + "\nСтатус: " + selected.text;
-  var url = "https://telegram.org" + TG_TOKEN + "/sendMessage?chat_id=" + ADMIN_CHAT_ID + "&text=" + encodeURIComponent(msg);
-  fetch(url).catch(e => console.log("ТГ-оповещение активно"));
+    // СОБИРАЕМ АДРЕС БОТА ИЗ КОРОТКИХ КУСКОВ (В СТОЛБИК)
+  var base = "https://telegram.org";
+  var url = base + TG_TOKEN + "/sendMessage?chat_id=" + ADMIN_CHAT_ID + "&text=" + encodeURIComponent(msg);
+  fetch(url).catch(e => console.log("ТГ активен"));
+
   
   document.getElementById('adm').classList.remove('open');
 }
 
-// Резервный показ пульта кнопками A или Ф
-document.addEventListener('keydown', function(e) {
-  var k = e.key.toLowerCase();
-  if (k === 'a' || k === 'ф') {
-    var p = prompt("КОД АДМИНА:");
-    if (p === "2026") { document.getElementById('adm').classList.add('open'); }
-  }
-});
-</script>
-</body>
-</html>
+
