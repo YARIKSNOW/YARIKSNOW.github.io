@@ -9,15 +9,13 @@
 <link rel="stylesheet" href="https://cloudflare.com" />
 
 <style>
-/* НАСТРОЙКА ЭКРАНА СМАРТФОНА ИЛИ ПК */
 html, body, #map {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: #b4d6e4;
+  background-color: #b4d6e4; /* Цвет моря, как на их карте */
 }
-/* БЕЛАЯ ОФИЦИАЛЬНАЯ ШАПКА КАК У RADARYRAL */
 .main-title-header {
   position: absolute;
   top: 0;
@@ -43,17 +41,17 @@ html, body, #map {
   Карта тревог РФ от @radarPF0, цель - информирование гражданских
 </div>
 
-<!-- КОНТЕЙНЕР ДЛЯ СЕТКИ КАРТЫ -->
+<!-- КОНТЕЙНЕР ДЛЯ КАРТЫ -->
 <div id="map"></div>
 
-<!-- НАДЕЖНЫЙ СТАБИЛЬНЫЙ ДВИЖОК КАРТЫ -->
+<!-- НАДЕЖНЫЙ СТАБИЛЬНЫЙ ДВИЖОК КАРТЫ (ВМЕСТО UNPKG) -->
 <script src="https://cloudflare.com"></script>
 
 <script>
-// НАСТРОЙКА КАРТЫ: ИСПРАВЛЕНО! ВЕРНУЛИ КООРДИНАТЫ ЦЕНТРА РОССИИ
-const map = L.map('map', {zoomControl: true}).setView([61, 105], 3);
+// ИНИЦИАЛИЗАЦИЯ КАРТЫ КАК У НИХ (ЦЕНТР РОССИИ, НО ЧУТЬ СДВИНУЛИ К ПФО)
+const map = L.map('map', {zoomControl: true}).setView([58.0, 70.0], 4);
 
-// СЛОЙ КАРТЫcontributors (БЕЗ ОШИБОК)
+// ПОДКЛЮЧАЕМ СЛОЙ КАРТЫ contributors
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
@@ -63,7 +61,7 @@ const alertColor = "#ff0000";  // Красный цвет тревоги
 
 let regionsLayer = null;
 
-// ТАКТИЧЕСКИЙ ЗАГРУЗЧИК БЫСТРЫХ ГРАНИЦ РЕГИОНОВ (ИСПРАВЛЕНО НА НАДЕЖНЫЙ CDN!)
+// ИХ ЛОГИКА ЗАГРУЗКИ КАРТЫ РОССИИ (ПОЧИНИЛИ ССЫЛКУ НА РАБОЧИЙ GEOJSON)
 fetch("https://githubusercontent.com")
   .then(response => response.json())
   .then(data => {
@@ -78,7 +76,6 @@ fetch("https://githubusercontent.com")
         };
       },
       onEachFeature: function(feature, layer) {
-        // Проверяем имя региона в базе данных GeoJSON
         const name = feature.properties.name || feature.properties.NAME;
         if (name) {
           layer.bindPopup(name);
@@ -86,26 +83,28 @@ fetch("https://githubusercontent.com")
       }
     }).addTo(map);
 
-    // Авто-проверка сигналов
+    // Сразу запускаем их функцию авто-проверки сигналов
     updateRegions();
-    setInterval(updateRegions, 30000);
+    setInterval(updateRegions, 30000); // Обновление каждые 30 секунд
 
   })
   .catch(error => {
     console.log("Ошибка загрузки карты: " + error);
   });
 
-// ФУНКЦИЯ АВТО-ПЕРЕХВАТА ТРЕВОГ ИЗ ИСТОЧНИКА
+// ИХ ОРИГИНАЛЬНАЯ ФУНКЦИЯ АВТО-ПЕРЕХВАТА ТРЕВОГ (ССЫЛКА ИСПРАВЛЕНА)
 async function updateRegions() {
   if (!regionsLayer) return;
 
   try {
+    // Тянем актуальный список тревог с боевого сервера
     const response = await fetch("https://githubusercontent.com" + Date.now());
     const alerts = await response.json();
 
     regionsLayer.eachLayer(function(layer) {
       const regName = layer.feature.properties.name || layer.feature.properties.NAME;
 
+      // Если регион в списке тревог — красим в красный, иначе — в серый
       if (alerts[regName] === "red" || alerts[regName] === "danger") {
         layer.setStyle({ fillColor: alertColor });
       } else {
