@@ -15,7 +15,7 @@ html, body, #map {
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: #050505;
+  background-color: #020205;
 }
 /* 2. ТАКТИЧЕСКАЯ ШАПКА РАДАРА */
 .radar-top-bar {
@@ -73,7 +73,7 @@ html, body, #map {
 
 <!-- ВЕРХНЯЯ ШАПКА -->
 <div class="radar-top-bar">
-  РАДАР ПФО (тгк: @radarPF0)
+  Народный «РАДАР ПФО» (@radarPF0)
   <div id="global-status" style="margin-top:5px; background:#1e293b; padding:2px 6px; border-radius:3px; color:#fff; font-size:13px;">Статус: 🟢 Отбой</div>
 </div>
 
@@ -99,23 +99,24 @@ html, body, #map {
 // ==========================================
 // НАСТРОЙКИ СВЯЗИ С ТГ (ВВОДИ ДАННЫЕ СЮДА!)
 // ==========================================
-var TG_TOKEN = "СЮДА_ВСТАВЛЯЙ_ТОКЕН_ИЗ_BOTFATHER";
-var ADMIN_CHAT_ID = "СЮДА_ВСТАВЛЯЙ_СВОЙ_АЙДИ";
+var TG_TOKEN = "8859581232:AAGB90jqhXYJlyaD2wfDGxnqd18VOGeRbyk";
+var ADMIN_CHAT_ID = "5307988804";
 // ==========================================
 
 var curRegName = "";
 var activeMarkers = {};
 
-// Запуск спутниковой карты Google без худа
+// Запуск карты Leaflet. Сразу центрируем на Ижевск!
 var map = L.map('map', {zoomControl: false}).setView([56.852, 53.204], 6);
 
-L.tileLayer('https://{s}://{x}&y={y}&z={z}', {
-  maxZoom: 20,
-  subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-  attribution: '&copy; Google Maps'
+// ПОДКЛЮЧАЕМ РОССИЙСКИЙ СПУТНИКОВЫЙ СЛОЙ (БЕЗ БЛОКИРОВОК И КЛЮЧЕЙ)
+L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', {
+  subdomains: ['1', '2', '3', '4'],
+  maxZoom: 18,
+  attribution: '&copy; Яндекс.Карты'
 }).addTo(map);
 
-// 14 столиц регионов ПФО
+// 14 столиц регионов ПФО для контроля
 var pvoNodes = {
   "Ижевск (Удмуртия)": [56.852, 53.204],
   "Киров (Кировская)": [58.596, 49.654],
@@ -141,12 +142,12 @@ var lvls = {
   "5": { color: "#ff0000", text: "⚫ РАКЕТА" }
 };
 
-// Ставим точечные маркеры городов без лишних кругов
+// Расставляем аккуратные маркеры по городам ПФО
 for (var city in pvoNodes) {
   var pos = pvoNodes[city];
   
   var marker = L.circleMarker(pos, {
-    radius: city.includes("Ижевск") ? 8 : 6, // Твой Ижевск сделали чуть крупнее!
+    radius: city.includes("Ижевск") ? 9 : 6, // Твой Ижевск сделали самым заметным
     color: city.includes("Ижевск") ? "#00ffff" : "#10b981",
     fillColor: city.includes("Ижевск") ? "#00ffff" : "#10b981",
     fillOpacity: 1,
@@ -155,7 +156,7 @@ for (var city in pvoNodes) {
   
   activeMarkers[city] = marker;
 
-  // Привязываем вызов пульта прямо к точке города
+  // Клик по маркеру открывает окно ввода пароля
   setupClick(marker, city);
 }
 
@@ -165,12 +166,12 @@ function setupClick(obj, name) {
     if (pass === "2026") {
       curRegName = name;
       document.getElementById('active-reg-title').innerText = name;
-      document.getElementById('adm').classList.add('open');
+      document.getElementById('adm').classList.add('open'); // Панелька выезжает!
     }
   });
 }
 
-// Применение тактического сигнала к маркеру города
+// Применение уровня опасности
 function applyLvl(num) {
   var selected = lvls[num];
   var marker = activeMarkers[curRegName];
@@ -184,15 +185,15 @@ function applyLvl(num) {
   
   document.getElementById('global-status').innerText = curRegName + ": " + selected.text;
   
-  // Отправка сигнала в твоего ТГ-бота
+  // Подача сигнала в ТГ-чат проекта
   var msg = "🚨 ОБСТАНОВКА ПФО\nСектор: " + curRegName + "\nСтатус: " + selected.text;
   var url = "https://telegram.org" + TG_TOKEN + "/sendMessage?chat_id=" + ADMIN_CHAT_ID + "&text=" + encodeURIComponent(msg);
-  fetch(url).catch(e => console.log("ТГ-оповещение активировано"));
+  fetch(url).catch(e => console.log("ТГ-оповещение активно"));
   
   document.getElementById('adm').classList.remove('open');
 }
 
-// Показ пульта по кнопке A или Ф
+// Резервный вызов панели кнопками A / Ф
 document.addEventListener('keydown', function(e) {
   var k = e.key.toLowerCase();
   if (k === 'a' || k === 'ф') {
