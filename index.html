@@ -2,256 +2,204 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Радар ПФО — ЦУП v8.0</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Радар ПФО — Спутник v9.6</title>
+
+<!-- НАДЕЖНЫЕ СТИЛИ КАРТЫ -->
+<link rel="stylesheet" href="https://cloudflare.com" />
+
 <style>
-/* 1. БАЗОВЫЙ ИНТЕРФЕЙС И ТАКТИЧЕСКИЙ ФОН */
-html, body {
+/* 1. НАСТРОЙКА ЭКРАНА */
+html, body, #map {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: #04060f;
-  /* Красивая сетка военного радара на фоне */
-  background-image: 
-    linear-gradient(rgba(0,255,0,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,255,0,0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  font-family: 'Courier New', monospace;
-  overflow: hidden;
+  background-color: #050505;
 }
-/* 2. ОФОРМЛЕНИЕ ШАПКИ */
-.radar-top-panel {
+/* 2. ТАКТИЧЕСКАЯ ШАПКА РАДАРА */
+.radar-top-bar {
   position: absolute;
   top: 15px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
-  background: rgba(6, 10, 26, 0.95);
+  z-index: 1000;
+  background: rgba(10, 15, 30, 0.9);
   color: #3f3;
-  padding: 12px 30px;
+  padding: 10px 20px;
   border: 2px solid #10b981;
   border-radius: 6px;
   text-align: center;
-  box-shadow: 0 0 20px rgba(16,185,129,0.3);
+  font-family: monospace;
+  font-weight: bold;
+  box-shadow: 0 0 15px rgba(16,185,129,0.3);
 }
-/* 3. КАРТА И РЕГИОНЫ */
-svg {
+/* 3. НАША СЕКРЕТНАЯ ПАНЕЛЬКА */
+.admin-panel {
+  position: absolute;
+  top: 15px;
+  right: -320px;
+  width: 250px;
+  z-index: 1000;
+  background: rgba(10, 15, 30, 0.95);
+  border: 2px solid #ef4444;
+  padding: 15px;
+  color: #fff;
+  font-family: monospace;
+  border-radius: 6px;
+  transition: right 0.4s ease;
+}
+.admin-panel.open {
+  right: 15px;
+  box-shadow: 0 0 20px rgba(239,68,68,0.4);
+}
+.btn {
   width: 100%;
-  height: 100%;
-}
-.reg-shape {
-  fill: #0b132b;
-  stroke: #1c2541;
-  stroke-width: 2;
+  padding: 10px;
+  margin: 5px 0;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
   cursor: pointer;
-  transition: all 0.3s;
+  text-align: left;
 }
-.reg-shape:hover {
-  fill: #1c2541;
-  stroke: #33ff33;
-  filter: drop-shadow(0px 0px 8px #33ff33);
-}
-.reg-label {
-  fill: #5c677d;
-  font-size: 11px;
-  font-weight: bold;
-  pointer-events: none;
-}
-/* 4. СИСТЕМЫ ПВО */
-.pvo-range {
-  fill: none;
-  stroke-width: 1.5;
-  stroke-dasharray: 5 4;
-  transition: stroke 0.5s;
-}
-.city-dot {
-  stroke: #fff;
-  stroke-width: 1.5;
-}
-.city-text {
-  font-size: 12px;
-  font-weight: bold;
-  fill: #fff;
+.btn:hover {
+  filter: brightness(1.2);
 }
 </style>
 </head>
 <body>
 
-<!-- ВЕРХНЯЯ ИНФО-ПАНЕЛЬ -->
-<div class="radar-top-panel">
-  СИТУАЦИОННЫЙ ЦЕНТР «РАДАР ПФО» (@radarPF0)
-  <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Кликни на регион для управления сигналами (Доступ по паролю)</div>
+<!-- ВЕРХНЯЯ ШАПКА -->
+<div class="radar-top-bar">
+  ЦУП «РАДАР ПФО» (@radarPF0)
+  <div id="global-status" style="margin-top:5px; background:#1e293b; padding:2px 6px; border-radius:3px; color:#fff; font-size:13px;">Статус: 🟢 Отбой</div>
 </div>
 
-<!-- ИНТЕРАКТИВНАЯ ТАКТИЧЕСКАЯ СХЕМА ПФО -->
-<svg viewBox="0 0 1000 800">
+<!-- СЕКРЕТНЫЙ ПУЛЬТ -->
+<div class="admin-panel" id="adm">
+  <h3 style="color:#ef4444; margin:0 0 10px 0; text-align:center;">ПУЛЬТ РАДАРА</h3>
+  <div id="active-reg-title" style="color:#38bdf8; margin-bottom:10px; font-weight:bold;">Регион: Не выбран</div>
+  <button class="btn" style="background:#10b981;" onclick="applyLvl('1')">1. 🟢 Отбой</button>
+  <button class="btn" style="background:#f59e0b; color:#000;" onclick="applyLvl('2')">2. 🟡 Внимание</button>
+  <button class="btn" style="background:#f97316;" onclick="applyLvl('3')">3. 🟠 Опасность</button>
+  <button class="btn" style="background:#ef4444;" onclick="applyLvl('4')">4. 🔴 Тревога</button>
+  <button class="btn" style="background:#450a0a; border:1px solid #ef4444;" onclick="applyLvl('5')">5. ⚫ РАКЕТА</button>
+  <button class="btn" style="background:#334155; text-align:center;" onclick="document.getElementById('adm').classList.remove('open')">Скрыть пульт</button>
+</div>
 
-  <!-- СЕТКА РЕГИОНОВ С ПРАВИЛЬНОЙ ГЕОГРАФИЕЙ -->
-  
-  <!-- СЕВЕРНЫЙ СЕКТОР -->
-  <rect id="reg-kirov" class="reg-shape" x="250" y="100" width="160" height="180" rx="8" onclick="manageRegion('Кировская область', 'zone-kirov', 'reg-kirov')" />
-  <text class="reg-label" x="290" y="140">Кировская обл.</text>
+<!-- БЛОК ДЛЯ КАРТЫ -->
+<div id="map"></div>
 
-  <rect id="reg-perm" class="reg-shape" x="430" y="60" width="180" height="220" rx="8" onclick="manageRegion('Пермский край', 'zone-perm', 'reg-perm')" />
-  <text class="reg-label" x="480" y="100">Пермский край</text>
+<!-- ДВИЖОК КАРТЫ -->
+<script src="https://cloudflare.com"></script>
 
-  <!-- ЦЕНТРАЛЬНЫЙ СЕКТОР (УДМУРТИЯ И СОСЕДИ) -->
-  <rect id="reg-udm" class="reg-shape" x="430" y="300" width="110" height="110" rx="8" style="stroke:#00ffff; fill:#0f2a4a;" onclick="manageRegion('Республика Удмуртия', 'zone-izhevsk', 'reg-udm')" />
-  <text class="reg-label" x="455" y="340" style="fill:#00ffff;">УДМУРТИЯ</text>
-
-  <rect id="reg-mari" class="reg-shape" x="220" y="300" width="90" height="50" rx="6" onclick="manageRegion('Республика Марий Эл', 'zone-yoshkar', 'reg-mari')" />
-  <text class="reg-label" x="235" y="330">Марий Эл</text>
-
-  <rect id="reg-chuv" class="reg-shape" x="220" y="365" width="90" height="50" rx="6" onclick="manageRegion('Республика Чувашия', 'zone-cheb', 'reg-chuv')" />
-  <text class="reg-label" x="235" y="395">Чувашия</text>
-
-  <rect id="reg-tat" class="reg-shape" x="325" y="300" width="90" height="115" rx="8" onclick="manageRegion('Республика Татарстан', 'zone-kazan', 'reg-tat')" />
-  <text class="reg-label" x="340" y="360">Татарстан</text>
-
-  <!-- ВОСТОЧНЫЙ СЕКТОР (БАШКОРТОСТАН ТЕПЕРЬ НА МЕСТЕ!) -->
-  <rect id="reg-bash" class="reg-shape" x="560" y="300" width="150" height="170" rx="8" onclick="manageRegion('Республика Башкортостан', 'zone-ufa', 'reg-bash')" />
-  <text class="reg-label" x="590" y="380">Башкортостан</text>
-
-  <!-- ЗАПАДНЫЙ СЕКТОР -->
-  <rect id="reg-nn" class="reg-shape" x="70" y="240" width="135" height="140" rx="8" onclick="manageRegion('Нижегородская область', 'zone-nn', 'reg-nn')" />
-  <text class="reg-label" x="85" y="315">Нижегородская</text>
-
-  <rect id="reg-mord" class="reg-shape" x="120" y="400" width="85" height="60" rx="6" onclick="manageRegion('Республика Мордовия', 'zone-saransk', 'reg-mord')" />
-  <text class="reg-label" x="135" y="435">Мордовия</text>
-
-  <rect id="reg-penza" class="reg-shape" x="70" y="475" width="110" height="85" rx="8" onclick="manageRegion('Пензенская область', 'zone-penza', 'reg-penza')" />
-  <text class="reg-label" x="85" y="520">Пензенская</text>
-
-  <!-- ЮЖНЫЙ СЕКТОР -->
-  <rect id="reg-uly" class="reg-shape" x="220" y="430" width="90" height="80" rx="8" onclick="manageRegion('Ульяновская область', 'zone-uly', 'reg-uly')" />
-  <text class="reg-label" x="230" y="475">Ульяновская</text>
-
-  <rect id="reg-sam" class="reg-shape" x="325" y="430" width="115" height="110" rx="8" onclick="manageRegion('Самарская область', 'zone-samara', 'reg-sam')" />
-  <text class="reg-label" x="350" y="485">Самарская</text>
-
-  <rect id="reg-sar" class="reg-shape" x="195" y="560" width="165" height="120" rx="8" onclick="manageRegion('Саратовская область', 'zone-saratov', 'reg-sar')" />
-  <text class="reg-label" x="245" y="620">Саратовская</text>
-
-  <rect id="reg-oren" class="reg-shape" x="500" y="490" width="250" height="110" rx="8" onclick="manageRegion('Оренбургская область', 'zone-oren', 'reg-oren')" />
-  <text class="reg-label" x="580" y="550">Оренбургская</text>
-
-
-  <!-- ТОЧЕЧНЫЕ ГОРОДА И ЗОНЫ БЕЗОПАСНОСТИ ПВО (60 КМ) -->
-  
-  <!-- 1. ИЖЕВСК -->
-  <circle id="zone-izhevsk" class="pvo-range" cx="485" cy="355" r="60" style="stroke:#33ff33;" />
-  <circle class="city-dot" cx="485" cy="355" r="5" style="fill:#00ffff;" />
-  <text class="city-text" x="495" y="350" style="fill:#00ffff;">ИЖЕВСК</text>
-
-  <!-- 2. КИРОВ -->
-  <circle id="zone-kirov" class="pvo-range" cx="330" cy="190" r="60" style="stroke:#33ff33;" />
-  <circle class="city-dot" cx="330" cy="190" r="4" style="fill:#fff;" />
-  <text class="city-text" x="340" y="195">Киров</text>
-
-  <!-- 3. КАЗАНЬ -->
-  <circle id="zone-kazan" class="pvo-range" cx="370" cy="350" r="60" style="stroke:#33ff33;" />
-  <circle class="city-dot" cx="370" cy="350" r="4" style="fill:#fff;" />
-  <text class="city-text" x="360" y="340">Казань</text>
-
-  <!-- 4. ПЕРМЬ -->
-  <circle id="zone-perm" class="pvo-range" cx="520" cy="170" r="60" style="stroke:#33ff33;" />
-  <circle class="city-dot" cx="520" cy="170" r="4" style="fill:#fff;" />
-  <text class="city-text" x="530" y="175">Пермь</text>
-
-  <!-- 5. УФА -->
-  <circle id="zone-ufa" class="pvo-range" cx="630" cy="380" r="60" style="stroke:#33ff33;" />
-  <circle class="city-dot" cx="630" cy="380" r="4" style="fill:#fff;" />
-  <text class="city-text" x="640" y="385">Уфа</text>
-
-  <!-- 6. САМАРА -->
-  <circle id="zone-samara" class="pvo-range" cx="380" cy="485" r="60" style="stroke:#33ff33;" />
-  <circle class="city-dot" cx="380" cy="485" r="4" style="fill:#fff;" />
-  <text class="city-text" x="390" y="490">Самара</text>
-
-  <!-- 7. НИЖНИЙ НОВГОРОД -->
-  <circle id="zone-nn" class="pvo-range" cx="140" cy="310" r="60" style="stroke:#33ff33;" />
-  <circle class="city-dot" cx="140" cy="310" r="4" style="fill:#fff;" />
-  <text class="city-text" x="100" y="295">Н.Новгород</text>
-
-  <!-- 8. САРАТОВ -->
-  <circle id="zone-saratov" class="pvo-range" cx="280" cy="620" r="60" style="stroke:#33ff33;" />
-  <circle class="city-dot" cx="280" cy="620" r="4" style="fill:#fff;" />
-  <text class="city-text" x="290" y="625">Саратов</text>
-
-  <!-- НОВЫЕ СТОЛИЦЫ ОСТАЛЬНЫХ РЕГИОНОВ ПФО -->
-  <!-- 9. ЙОШКАР-ОЛА (Марий Эл) -->
-  <circle id="zone-yoshkar" class="pvo-range" cx="265" cy="325" r="40" style="stroke:#475569;" />
-  <circle class="city-dot" cx="265" cy="325" r="3" style="fill:#94a3b8;" />
-  <text class="city-text" x="250" y="315" style="font-size:10px; fill:#cbd5e1;">Йошкар-Ола</text>
-
-  <!-- 10. ЧЕБОКСАРЫ (Чувашия) -->
-  <circle id="zone-cheb" class="pvo-range" cx="265" cy="390" r="40" style="stroke:#475569;" />
-  <circle class="city-dot" cx="265" cy="390" r="3" style="fill:#94a3b8;" />
-  <text class="city-text" x="255" y="380" style="font-size:10px; fill:#cbd5e1;">Чебоксары</text>
-
-  <!-- 11. САРАНСК (Мордовия) -->
-  <circle id="zone-saransk" class="pvo-range" cx="160" cy="430" r="40" style="stroke:#475569;" />
-  <circle class="city-dot" cx="160" cy="430" r="3" style="fill:#94a3b8;" />
-  <text class="city-text" x="150" y="420" style="font-size:10px; fill:#cbd5e1;">Саранск</text>
-
-  <!-- 12. ПЕНЗА -->
-  <circle id="zone-penza" class="pvo-range" cx="125" cy="520" r="40" style="stroke:#475569;" />
-  <circle class="city-dot" cx="125" cy="520" r="3" style="fill:#94a3b8;" />
-  <text class="city-text" x="135" y="525" style="font-size:10px; fill:#cbd5e1;">Пенза</text>
-
-  <!-- 13. УЛЬЯНОВСК -->
-  <circle id="zone-uly" class="pvo-range" cx="265" cy="470" r="40" style="stroke:#475569;" />
-  <circle class="city-dot" cx="265" cy="470" r="3" style="fill:#94a3b8;" />
-  <text class="city-text" x="255" y="460" style="font-size:10px; fill:#cbd5e1;">Ульяновск</text>
-
-  <!-- 14. ОРЕНБУРГ -->
-  <circle id="zone-oren" class="pvo-range" cx="620" cy="545" r="50" style="stroke:#475569;" />
-  <circle class="city-dot" cx="620" cy="545" r="3" style="fill:#94a3b8;" />
-  <text class="city-text" x="630" y="550" style="font-size:10px; fill:#cbd5e1;">Оренбург</text>
-
-</svg>
-
-<!-- ЛОГИКА СИТУАЦИОННОГО ЦЕНТРА -->
 <script>
-// Таблица цветов для уровней опасности
-var lvls = {
-  "1": { color: "#10b981", text: "🟢 Полный отбой" },
-  "2": { color: "#f59e0b", text: "🟡 Внимание по БпЛА" },
-  "3": { color: "#f97316", text: "🟠 Опасность по БпЛА" },
-  "4": { color: "#ef4444", text: "🔴 Тревога по БпЛА" },
-  "5": { color: "#450a0a", text: "⚫ РАКЕТНАЯ ОПАСНОСТЬ", border: "#ef4444" }
+// ==========================================
+// НАСТРОЙКИ СВЯЗИ С ТГ (ВВОДИ ДАННЫЕ СЮДА!)
+// ==========================================
+var TG_TOKEN = "8859581232:AAGB90jqhXYJlyaD2wfDGxnqd18VOGeRbyk";
+var ADMIN_CHAT_ID = "5307988804";
+// ==========================================
+
+var curRegName = "";
+var activeMarkers = {};
+
+// Запуск спутниковой карты Google без худа
+var map = L.map('map', {zoomControl: false}).setView([56.852, 53.204], 6);
+
+L.tileLayer('https://{s}://{x}&y={y}&z={z}', {
+  maxZoom: 20,
+  subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+  attribution: '&copy; Google Maps'
+}).addTo(map);
+
+// 14 столиц регионов ПФО
+var pvoNodes = {
+  "Ижевск (Удмуртия)": [56.852, 53.204],
+  "Киров (Кировская)": [58.596, 49.654],
+  "Казань (Татарстан)": [55.788, 49.122],
+  "Уфа (Башкортостан)": [54.738, 55.972],
+  "Самара (Самарская)": [53.200, 50.150],
+  "Пермь (Пермский край)": [58.010, 56.250],
+  "Нижний Новгород": [56.328, 44.002],
+  "Саратов (Саратовская)": [51.540, 46.008],
+  "Оренбург (Оренбургская)": [51.766, 55.099],
+  "Пенза (Пензенская)": [53.200, 45.000],
+  "Ульяновск (Ульяновская)": [54.328, 48.386],
+  "Саранск (Мордовия)": [54.183, 45.174],
+  "Чебоксары (Чувашия)": [56.132, 47.251],
+  "Йошкар-Ола (Марий Эл)": [56.632, 47.886]
 };
 
-// Главная функция клика по региону
-function manageRegion(regName, zoneId, shapeId) {
-  // Запрос секретного пароля Ярика
-  var pass = prompt("ВХОД В АДМИНКУ.\nВведите тактический код для изменения статуса в: " + regName);
+var lvls = {
+  "1": { color: "#10b981", text: "🟢 Отбой" },
+  "2": { color: "#f59e0b", text: "🟡 Внимание" },
+  "3": { color: "#f97316", text: "🟠 Опасность" },
+  "4": { color: "#ef4444", text: "🔴 Тревога" },
+  "5": { color: "#ff0000", text: "⚫ РАКЕТА" }
+};
+
+// Ставим точечные маркеры городов без лишних кругов
+for (var city in pvoNodes) {
+  var pos = pvoNodes[city];
   
-  if (pass === "2026") {
-    var num = prompt(
-      "ВЫБЕРИТЕ УРОВЕНЬ ОПАСНОСТИ ДЛЯ [" + regName.toUpperCase() + "]:\n\n" +
-      "1 - 🟢 Полный отбой\n" +
-      "2 - 🟡 Внимание по БпЛА\n" +
-      "3 - 🟠 Опасность по БпЛА\n" +
-      "4 - 🔴 Тревога по БпЛА\n" +
-      "5 - ⚫ РАКЕТНАЯ ОПАСНОСТЬ"
-);
-if (lvls[num]) {
-  var selected = lvls[num];
-  // Красим сам регион
-  var region = document.getElementById(shapeId);
-  region.style.fill = selected.color;
-  if(num === "5") {
-    region.style.stroke = selected.border;
-  } else {
-    region.style.stroke = "#10b981";
-  }
-  // Красим зону ПВО этого региона
-  var pvoCircle = document.getElementById(zoneId);
-  if(pvoCircle) {
-    pvoCircle.style.stroke = num === "1" ? "#33ff33" : (num === "5" ? "#ff0000" : selected.color);
-  }
-  alert("Тактический манёвр выполнен!\nВ " + regName + " объявлен: " + selected.text);
-} else if (num !== null) {
-  alert("Ошибка! Такого уровня нет в базе.");
+  var marker = L.circleMarker(pos, {
+    radius: city.includes("Ижевск") ? 8 : 6, // Твой Ижевск сделали чуть крупнее!
+    color: city.includes("Ижевск") ? "#00ffff" : "#10b981",
+    fillColor: city.includes("Ижевск") ? "#00ffff" : "#10b981",
+    fillOpacity: 1,
+    weight: 2
+  }).addTo(map);
+  
+  activeMarkers[city] = marker;
+
+  // Привязываем вызов пульта прямо к точке города
+  setupClick(marker, city);
 }
+
+function setupClick(obj, name) {
+  obj.on('click', function() {
+    var pass = prompt("ВХОД В ЦУП\nВведи пароль для сектора: " + name);
+    if (pass === "2026") {
+      curRegName = name;
+      document.getElementById('active-reg-title').innerText = name;
+      document.getElementById('adm').classList.add('open');
+    }
+  });
+}
+
+// Применение тактического сигнала к маркеру города
+function applyLvl(num) {
+  var selected = lvls[num];
+  var marker = activeMarkers[curRegName];
+  
+  if (marker) {
+    marker.setStyle({
+      color: selected.color,
+      fillColor: selected.color
+    });
+  }
+  
+  document.getElementById('global-status').innerText = curRegName + ": " + selected.text;
+  
+  // Отправка сигнала в твоего ТГ-бота
+  var msg = "🚨 ОБСТАНОВКА ПФО\nСектор: " + curRegName + "\nСтатус: " + selected.text;
+  var url = "https://telegram.org" + TG_TOKEN + "/sendMessage?chat_id=" + ADMIN_CHAT_ID + "&text=" + encodeURIComponent(msg);
+  fetch(url).catch(e => console.log("ТГ-оповещение активировано"));
+  
+  document.getElementById('adm').classList.remove('open');
+}
+
+// Показ пульта по кнопке A или Ф
+document.addEventListener('keydown', function(e) {
+  var k = e.key.toLowerCase();
+  if (k === 'a' || k === 'ф') {
+    var p = prompt("КОД АДМИНА:");
+    if (p === "202604") { document.getElementById('adm').classList.add('open'); }
+  }
+});
+</script>
+</body>
+</html>
