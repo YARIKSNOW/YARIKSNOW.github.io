@@ -2,211 +2,256 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Радар ПФО v7.1</title>
+<title>Радар ПФО — ЦУП v8.0</title>
 <style>
-/* 1. НАСТРОЙКА ЭКРАНА */
+/* 1. БАЗОВЫЙ ИНТЕРФЕЙС И ТАКТИЧЕСКИЙ ФОН */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background: #060814;
-  font-family: monospace;
+  background-color: #04060f;
+  /* Красивая сетка военного радара на фоне */
+  background-image: 
+    linear-gradient(rgba(0,255,0,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,0,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  font-family: 'Courier New', monospace;
   overflow: hidden;
 }
-/* 2. ШАПКА РАДАРА */
-.header {
+/* 2. ОФОРМЛЕНИЕ ШАПКИ */
+.radar-top-panel {
   position: absolute;
   top: 15px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 99;
-  background: #0a1024;
+  z-index: 100;
+  background: rgba(6, 10, 26, 0.95);
   color: #3f3;
-  padding: 10px;
-  border: 2px solid #3f3;
+  padding: 12px 30px;
+  border: 2px solid #10b981;
   border-radius: 6px;
   text-align: center;
+  box-shadow: 0 0 20px rgba(16,185,129,0.3);
 }
-/* 3. АДМИНКА */
-.panel {
-  position: absolute;
-  top: 15px;
-  right: -320px;
-  width: 240px;
-  z-index: 99;
-  background: #0a0f1e;
-  border: 2px solid #f33;
-  padding: 15px;
-  color: #fff;
-  transition: 0.4s;
-}
-.panel.open {
-  right: 15px;
-}
-.btn {
-  width: 100%;
-  padding: 10px;
-  margin: 5px 0;
-  border: none;
-  color: #fff;
-  font-weight: bold;
-  cursor: pointer;
-}
-/* 4. СТИЛИ СХЕМЫ ПФО */
+/* 3. КАРТА И РЕГИОНЫ */
 svg {
   width: 100%;
   height: 100%;
 }
-rect {
-  fill: #111827;
-  stroke: #1e293b;
+.reg-shape {
+  fill: #0b132b;
+  stroke: #1c2541;
   stroke-width: 2;
+  cursor: pointer;
+  transition: all 0.3s;
 }
-rect:hover {
-  fill: #1f293d;
-  stroke: #3f3;
+.reg-shape:hover {
+  fill: #1c2541;
+  stroke: #33ff33;
+  filter: drop-shadow(0px 0px 8px #33ff33);
 }
-text {
-  fill: #475569;
+.reg-label {
+  fill: #5c677d;
+  font-size: 11px;
+  font-weight: bold;
+  pointer-events: none;
+}
+/* 4. СИСТЕМЫ ПВО */
+.pvo-range {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  transition: stroke 0.5s;
+}
+.city-dot {
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.city-text {
   font-size: 12px;
   font-weight: bold;
-}
-.zone {
-  fill: #3f3;
-  fill-opacity: 0.05;
-  stroke: #3f3;
-  stroke-width: 1.5;
-  stroke-dasharray: 4;
-}
-.dot {
-  fill: #f33;
-  stroke: #fff;
+  fill: #fff;
 }
 </style>
 </head>
 <body>
 
-<!-- БЛОК ШАПКИ -->
-<div class="header">
-  РАДАР ПФО (@radarPF0)
-  <div id="status">Статус: 🟢 Отбой</div>
+<!-- ВЕРХНЯЯ ИНФО-ПАНЕЛЬ -->
+<div class="radar-top-panel">
+  СИТУАЦИОННЫЙ ЦЕНТР «РАДАР ПФО» (@radarPF0)
+  <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Кликни на регион для управления сигналами (Доступ по паролю)</div>
 </div>
 
-<!-- БЛОК ПУЛЬТА -->
-<div class="panel" id="adm">
-  <h3 style="color:#f33;margin:0;">ПУЛЬТ</h3>
-  <button class="btn" style="background:#00875A;" onclick="setLvl('🟢 Отбой','#3f3')">1. Отбой</button>
-  <button class="btn" style="background:#FFAB00;color:#000;" onclick="setLvl('🟡 Внимание','#FFAB00')">2. Внимание</button>
-  <button class="btn" style="background:#FF5630;" onclick="setLvl('🟠 Опасность','#FF5630')">3. Опасность</button>
-  <button class="btn" style="background:#DE350B;" onclick="setLvl('🔴 Тревога','#DE350B')">4. Тревога</button>
-  <button class="btn" style="background:#520000;" onclick="setLvl('⚫ РАКЕТА','#f33')">5. РАКЕТА</button>
-</div>
+<!-- ИНТЕРАКТИВНАЯ ТАКТИЧЕСКАЯ СХЕМА ПФО -->
+<svg viewBox="0 0 1000 800">
 
-<!-- АВТОНОМНАЯ СХЕМА РЕГИОНОВ ПФО -->
-<svg viewBox="0 0 800 600">
+  <!-- СЕТКА РЕГИОНОВ С ПРАВИЛЬНОЙ ГЕОГРАФИЕЙ -->
+  
+  <!-- СЕВЕРНЫЙ СЕКТОР -->
+  <rect id="reg-kirov" class="reg-shape" x="250" y="100" width="160" height="180" rx="8" onclick="manageRegion('Кировская область', 'zone-kirov', 'reg-kirov')" />
+  <text class="reg-label" x="290" y="140">Кировская обл.</text>
 
-  <!-- КАРТА РЕГИОНОВ (СТОЛБИК) -->
-  <rect x="80" y="220" width="110" height="90" />
-  <text x="90" y="270">Нижегородская</text>
+  <rect id="reg-perm" class="reg-shape" x="430" y="60" width="180" height="220" rx="8" onclick="manageRegion('Пермский край', 'zone-perm', 'reg-perm')" />
+  <text class="reg-label" x="480" y="100">Пермский край</text>
 
-  <rect x="120" y="320" width="80" height="60" />
-  <text x="135" y="355">Мордовия</text>
+  <!-- ЦЕНТРАЛЬНЫЙ СЕКТОР (УДМУРТИЯ И СОСЕДИ) -->
+  <rect id="reg-udm" class="reg-shape" x="430" y="300" width="110" height="110" rx="8" style="stroke:#00ffff; fill:#0f2a4a;" onclick="manageRegion('Республика Удмуртия', 'zone-izhevsk', 'reg-udm')" />
+  <text class="reg-label" x="455" y="340" style="fill:#00ffff;">УДМУРТИЯ</text>
 
-  <rect x="90" y="390" width="95" height="70" />
-  <text x="110" y="430">Пензенская</text>
+  <rect id="reg-mari" class="reg-shape" x="220" y="300" width="90" height="50" rx="6" onclick="manageRegion('Республика Марий Эл', 'zone-yoshkar', 'reg-mari')" />
+  <text class="reg-label" x="235" y="330">Марий Эл</text>
 
-  <rect x="210" y="80" width="130" height="150" />
-  <text x="250" y="160">Кировская</text>
+  <rect id="reg-chuv" class="reg-shape" x="220" y="365" width="90" height="50" rx="6" onclick="manageRegion('Республика Чувашия', 'zone-cheb', 'reg-chuv')" />
+  <text class="reg-label" x="235" y="395">Чувашия</text>
 
-  <rect x="360" y="50" width="140" height="160" />
-  <text x="410" y="130">Пермский край</text>
+  <rect id="reg-tat" class="reg-shape" x="325" y="300" width="90" height="115" rx="8" onclick="manageRegion('Республика Татарстан', 'zone-kazan', 'reg-tat')" />
+  <text class="reg-label" x="340" y="360">Татарстан</text>
 
-  <rect x="360" y="220" width="90" height="100" style="stroke:#0ff;" />
-  <text x="375" y="275" style="fill:#0ff;">УДМУРТИЯ</text>
+  <!-- ВОСТОЧНЫЙ СЕКТОР (БАШКОРТОСТАН ТЕПЕРЬ НА МЕСТЕ!) -->
+  <rect id="reg-bash" class="reg-shape" x="560" y="300" width="150" height="170" rx="8" onclick="manageRegion('Республика Башкортостан', 'zone-ufa', 'reg-bash')" />
+  <text class="reg-label" x="590" y="380">Башкортостан</text>
 
-  <rect x="210" y="240" width="65" height="50" />
-  <text x="220" y="270">Марий Эл</text>
+  <!-- ЗАПАДНЫЙ СЕКТОР -->
+  <rect id="reg-nn" class="reg-shape" x="70" y="240" width="135" height="140" rx="8" onclick="manageRegion('Нижегородская область', 'zone-nn', 'reg-nn')" />
+  <text class="reg-label" x="85" y="315">Нижегородская</text>
 
-  <rect x="210" y="300" width="65" height="50" />
-  <text x="223" y="330">Чувашия</text>
+  <rect id="reg-mord" class="reg-shape" x="120" y="400" width="85" height="60" rx="6" onclick="manageRegion('Республика Мордовия', 'zone-saransk', 'reg-mord')" />
+  <text class="reg-label" x="135" y="435">Мордовия</text>
 
-  <rect x="285" y="270" width="110" height="80" />
-  <text x="315" y="315">Татарстан</text>
+  <rect id="reg-penza" class="reg-shape" x="70" y="475" width="110" height="85" rx="8" onclick="manageRegion('Пензенская область', 'zone-penza', 'reg-penza')" />
+  <text class="reg-label" x="85" y="520">Пензенская</text>
 
-  <rect x="460" y="230" width="130" height="140" />
-  <text x="495" y="300">Башкортостан</text>
+  <!-- ЮЖНЫЙ СЕКТОР -->
+  <rect id="reg-uly" class="reg-shape" x="220" y="430" width="90" height="80" rx="8" onclick="manageRegion('Ульяновская область', 'zone-uly', 'reg-uly')" />
+  <text class="reg-label" x="230" y="475">Ульяновская</text>
 
-  <rect x="210" y="365" width="85" height="75" />
-  <text x="220" y="410">Ульяновская</text>
+  <rect id="reg-sam" class="reg-shape" x="325" y="430" width="115" height="110" rx="8" onclick="manageRegion('Самарская область', 'zone-samara', 'reg-sam')" />
+  <text class="reg-label" x="350" y="485">Самарская</text>
 
-  <rect x="305" y="365" width="100" height="85" />
-  <text x="325" y="410">Самарская</text>
+  <rect id="reg-sar" class="reg-shape" x="195" y="560" width="165" height="120" rx="8" onclick="manageRegion('Саратовская область', 'zone-saratov', 'reg-sar')" />
+  <text class="reg-label" x="245" y="620">Саратовская</text>
 
-  <rect x="200" y="460" width="150" height="100" />
-  <text x="245" y="515">Саратовская</text>
+  <rect id="reg-oren" class="reg-shape" x="500" y="490" width="250" height="110" rx="8" onclick="manageRegion('Оренбургская область', 'zone-oren', 'reg-oren')" />
+  <text class="reg-label" x="580" y="550">Оренбургская</text>
 
-  <rect x="370" y="460" width="230" height="110" />
-  <text x="450" y="520">Оренбургская</text>
 
-  <!-- НАШИ ТОЧКИ И КРУГИ ПВО ПФО -->
-  <circle class="zone" cx="405" cy="265" r="55" />
-  <circle class="dot" cx="405" cy="265" r="6" style="fill:#0ff;" />
-  <text x="415" y="260" style="fill:#0ff;">ИЖЕВСК</text>
+  <!-- ТОЧЕЧНЫЕ ГОРОДА И ЗОНЫ БЕЗОПАСНОСТИ ПВО (60 КМ) -->
+  
+  <!-- 1. ИЖЕВСК -->
+  <circle id="zone-izhevsk" class="pvo-range" cx="485" cy="355" r="60" style="stroke:#33ff33;" />
+  <circle class="city-dot" cx="485" cy="355" r="5" style="fill:#00ffff;" />
+  <text class="city-text" x="495" y="350" style="fill:#00ffff;">ИЖЕВСК</text>
 
-  <circle class="zone" cx="275" cy="180" r="55" />
-  <circle class="dot" cx="275" cy="180" r="5" />
-  <text x="285" y="185" style="fill:#fff;">Киров</text>
+  <!-- 2. КИРОВ -->
+  <circle id="zone-kirov" class="pvo-range" cx="330" cy="190" r="60" style="stroke:#33ff33;" />
+  <circle class="city-dot" cx="330" cy="190" r="4" style="fill:#fff;" />
+  <text class="city-text" x="340" y="195">Киров</text>
 
-  <circle class="zone" cx="320" cy="300" r="55" />
-  <circle class="dot" cx="320" cy="300" r="5" />
-  <text x="310" y="290" style="fill:#fff;">Казань</text>
+  <!-- 3. КАЗАНЬ -->
+  <circle id="zone-kazan" class="pvo-range" cx="370" cy="350" r="60" style="stroke:#33ff33;" />
+  <circle class="city-dot" cx="370" cy="350" r="4" style="fill:#fff;" />
+  <text class="city-text" x="360" y="340">Казань</text>
 
-  <circle class="zone" cx="430" cy="140" r="55" />
-  <circle class="dot" cx="430" cy="140" r="5" />
-  <text x="440" y="145" style="fill:#fff;">Пермь</text>
+  <!-- 4. ПЕРМЬ -->
+  <circle id="zone-perm" class="pvo-range" cx="520" cy="170" r="60" style="stroke:#33ff33;" />
+  <circle class="city-dot" cx="520" cy="170" r="4" style="fill:#fff;" />
+  <text class="city-text" x="530" y="175">Пермь</text>
 
-  <circle class="zone" cx="510" cy="300" r="55" />
-  <circle class="dot" cx="510" cy="300" r="5" />
-  <text x="520" y="305" style="fill:#fff;">Уфа</text>
+  <!-- 5. УФА -->
+  <circle id="zone-ufa" class="pvo-range" cx="630" cy="380" r="60" style="stroke:#33ff33;" />
+  <circle class="city-dot" cx="630" cy="380" r="4" style="fill:#fff;" />
+  <text class="city-text" x="640" y="385">Уфа</text>
 
-  <circle class="zone" cx="350" cy="410" r="55" />
-  <circle class="dot" cx="350" cy="410" r="5" />
-  <text x="360" y="415" style="fill:#fff;">Самара</text>
+  <!-- 6. САМАРА -->
+  <circle id="zone-samara" class="pvo-range" cx="380" cy="485" r="60" style="stroke:#33ff33;" />
+  <circle class="city-dot" cx="380" cy="485" r="4" style="fill:#fff;" />
+  <text class="city-text" x="390" y="490">Самара</text>
 
-  <circle class="zone" cx="150" cy="270" r="55" />
-  <circle class="dot" cx="150" cy="270" r="5" />
-  <text x="110" y="255" style="fill:#fff;">Н.Новгород</text>
+  <!-- 7. НИЖНИЙ НОВГОРОД -->
+  <circle id="zone-nn" class="pvo-range" cx="140" cy="310" r="60" style="stroke:#33ff33;" />
+  <circle class="city-dot" cx="140" cy="310" r="4" style="fill:#fff;" />
+  <text class="city-text" x="100" y="295">Н.Новгород</text>
 
-  <circle class="zone" cx="270" cy="500" r="55" />
-  <circle class="dot" cx="270" cy="500" r="5" />
-  <text x="280" y="505" style="fill:#fff;">Саратов</text>
+  <!-- 8. САРАТОВ -->
+  <circle id="zone-saratov" class="pvo-range" cx="280" cy="620" r="60" style="stroke:#33ff33;" />
+  <circle class="city-dot" cx="280" cy="620" r="4" style="fill:#fff;" />
+  <text class="city-text" x="290" y="625">Саратов</text>
+
+  <!-- НОВЫЕ СТОЛИЦЫ ОСТАЛЬНЫХ РЕГИОНОВ ПФО -->
+  <!-- 9. ЙОШКАР-ОЛА (Марий Эл) -->
+  <circle id="zone-yoshkar" class="pvo-range" cx="265" cy="325" r="40" style="stroke:#475569;" />
+  <circle class="city-dot" cx="265" cy="325" r="3" style="fill:#94a3b8;" />
+  <text class="city-text" x="250" y="315" style="font-size:10px; fill:#cbd5e1;">Йошкар-Ола</text>
+
+  <!-- 10. ЧЕБОКСАРЫ (Чувашия) -->
+  <circle id="zone-cheb" class="pvo-range" cx="265" cy="390" r="40" style="stroke:#475569;" />
+  <circle class="city-dot" cx="265" cy="390" r="3" style="fill:#94a3b8;" />
+  <text class="city-text" x="255" y="380" style="font-size:10px; fill:#cbd5e1;">Чебоксары</text>
+
+  <!-- 11. САРАНСК (Мордовия) -->
+  <circle id="zone-saransk" class="pvo-range" cx="160" cy="430" r="40" style="stroke:#475569;" />
+  <circle class="city-dot" cx="160" cy="430" r="3" style="fill:#94a3b8;" />
+  <text class="city-text" x="150" y="420" style="font-size:10px; fill:#cbd5e1;">Саранск</text>
+
+  <!-- 12. ПЕНЗА -->
+  <circle id="zone-penza" class="pvo-range" cx="125" cy="520" r="40" style="stroke:#475569;" />
+  <circle class="city-dot" cx="125" cy="520" r="3" style="fill:#94a3b8;" />
+  <text class="city-text" x="135" y="525" style="font-size:10px; fill:#cbd5e1;">Пенза</text>
+
+  <!-- 13. УЛЬЯНОВСК -->
+  <circle id="zone-uly" class="pvo-range" cx="265" cy="470" r="40" style="stroke:#475569;" />
+  <circle class="city-dot" cx="265" cy="470" r="3" style="fill:#94a3b8;" />
+  <text class="city-text" x="255" y="460" style="font-size:10px; fill:#cbd5e1;">Ульяновск</text>
+
+  <!-- 14. ОРЕНБУРГ -->
+  <circle id="zone-oren" class="pvo-range" cx="620" cy="545" r="50" style="stroke:#475569;" />
+  <circle class="city-dot" cx="620" cy="545" r="3" style="fill:#94a3b8;" />
+  <text class="city-text" x="630" y="550" style="font-size:10px; fill:#cbd5e1;">Оренбург</text>
 
 </svg>
 
-<!-- ДВИЖОК СКРИПТА (СТРОГО ПО СТОЛБИКАМ) -->
+<!-- ЛОГИКА СИТУАЦИОННОГО ЦЕНТРА -->
 <script>
-// ВЫЗОВ АДМИНКИ НА A ИЛИ Ф
-document.addEventListener('keydown', function(e) {
-  var k = e.key.toLowerCase();
-  if (k === 'a' || k === 'ф') {
-    var p = prompt("ПАРОЛЬ:");
-    if (p === "2026") {
-      document.getElementById('adm').classList.add('open');
-    }
+// Таблица цветов для уровней опасности
+var lvls = {
+  "1": { color: "#10b981", text: "🟢 Полный отбой" },
+  "2": { color: "#f59e0b", text: "🟡 Внимание по БпЛА" },
+  "3": { color: "#f97316", text: "🟠 Опасность по БпЛА" },
+  "4": { color: "#ef4444", text: "🔴 Тревога по БпЛА" },
+  "5": { color: "#450a0a", text: "⚫ РАКЕТНАЯ ОПАСНОСТЬ", border: "#ef4444" }
+};
+
+// Главная функция клика по региону
+function manageRegion(regName, zoneId, shapeId) {
+  // Запрос секретного пароля Ярика
+  var pass = prompt("ВХОД В АДМИНКУ.\nВведите тактический код для изменения статуса в: " + regName);
+  
+  if (pass === "2026") {
+    var num = prompt(
+      "ВЫБЕРИТЕ УРОВЕНЬ ОПАСНОСТИ ДЛЯ [" + regName.toUpperCase() + "]:\n\n" +
+      "1 - 🟢 Полный отбой\n" +
+      "2 - 🟡 Внимание по БпЛА\n" +
+      "3 - 🟠 Опасность по БпЛА\n" +
+      "4 - 🔴 Тревога по БпЛА\n" +
+      "5 - ⚫ РАКЕТНАЯ ОПАСНОСТЬ"
+);
+if (lvls[num]) {
+  var selected = lvls[num];
+  // Красим сам регион
+  var region = document.getElementById(shapeId);
+  region.style.fill = selected.color;
+  if(num === "5") {
+    region.style.stroke = selected.border;
+  } else {
+    region.style.stroke = "#10b981";
   }
-});
-
-// СМЕНА СТАТУСА И ЦВЕТА ЗОН ПВО
-function setLvl(txt, col) {
-  document.getElementById('status').innerText = 'Статус: ' + txt;
-  var zs = document.querySelectorAll('.zone');
-  zs.forEach(function(z) {
-    z.style.stroke = col;
-    z.style.fill = col;
-  });
+  // Красим зону ПВО этого региона
+  var pvoCircle = document.getElementById(zoneId);
+  if(pvoCircle) {
+    pvoCircle.style.stroke = num === "1" ? "#33ff33" : (num === "5" ? "#ff0000" : selected.color);
+  }
+  alert("Тактический манёвр выполнен!\nВ " + regName + " объявлен: " + selected.text);
+} else if (num !== null) {
+  alert("Ошибка! Такого уровня нет в базе.");
 }
-</script>
-
-</body>
-</html>
