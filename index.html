@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Радар ПФО — ЦУП v20.0</title>
+<title>Радар ПФО — ЦУП v22.0</title>
 
-<!-- НАДЕЖНЫЕ СТИЛИ КАРТЫ -->
+<!-- ОФИЦИАЛЬНЫЕ СТИЛИ КАРТЫ -->
 <link rel="stylesheet" href="https://cloudflare.com" />
 
 <style>
@@ -14,20 +14,29 @@ html, body, #map {
   background: #060913; font-family: 'Segoe UI', sans-serif; overflow: hidden;
 }
 
-/* КРАСИВЫЕ МСК-ЧАСЫ В ПРАВОМ ВЕРХНЕМ УГЛУ */
+/* БЕЛАЯ ОФИЦИАЛЬНАЯ ШАПКА КАК У RADARYRAL */
+.main-title-header {
+  position: absolute; top: 0; left: 0; width: 100%;
+  background: #ffffff; color: #000000; padding: 12px 0;
+  text-align: center; font-size: 16px; font-weight: bold;
+  border-bottom: 2px solid #1e293b; z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* КРАСИВЫЕ МСК-ЧАСЫ С СЕКУНДАМИ В ПРАВОМ ВЕРХНЕМ УГЛУ */
 .clock-panel {
-  position: absolute; top: 20px; right: 20px; z-index: 1000;
+  position: absolute; top: 65px; right: 20px; z-index: 1000;
   background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1);
-  padding: 10px 16px; border-radius: 10px; text-align: right; color: #fff;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5); min-width: 130px;
+  padding: 10px 16px; border-radius: 10px; text-align: right; color: #ffffff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5); min-width: 135px;
 }
-.time-main { font-size: 22px; font-weight: bold; font-family: monospace; }
+.time-main { font-size: 22px; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
 .date-main { font-size: 11px; color: #10b981; text-transform: uppercase; margin-top: 2px; font-weight: bold; }
 
-/* ВЫЕЗЖАЮЩАЯ ПЛАШКА СИГНАЛОВ СЛЕВА СНИЗУ */
+/* ВЫДВИЖНАЯ ПЛАШКА СЛЕВА СНИЗУ ПО СТРЕЛОЧКЕ */
 .legend-wrapper {
-  position: absolute; bottom: 20px; left: -190px; z-index: 1000;
+  position: absolute; bottom: 25px; left: -200px; z-index: 1000;
   display: flex; align-items: flex-end; transition: left 0.3s ease;
 }
 .legend-wrapper.open { left: 20px; }
@@ -35,13 +44,12 @@ html, body, #map {
 .legend-content {
   background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1);
-  padding: 12px; border-radius: 10px; color: #fff; font-size: 12px;
+  padding: 12px; border-radius: 10px; color: #ffffff; font-size: 12px;
   display: flex; flex-direction: column; gap: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 .legend-item { display: flex; align-items: center; gap: 8px; }
 .legend-color { width: 22px; height: 12px; border-radius: 3px; }
 
-/* СТИЛЬНАЯ КНОПКА-СТРЕЛОЧКА */
 .toggle-arrow-btn {
   background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.1);
   color: #10b981; width: 30px; height: 40px; cursor: pointer;
@@ -49,22 +57,37 @@ html, body, #map {
   justify-content: center; font-weight: bold; font-size: 16px; box-shadow: 4px 0 10px rgba(0,0,0,0.2);
 }
 
-/* СТИЛЬ ОКНА POPUP НА КАРТЕ */
-.leaflet-popup-content-wrapper {
-  background: #111827 !important; color: #fff !important; border-radius: 8px !important;
+/* КНОПКА ОБНОВЛЕНИЯ И СТАТУС СНИЗУ СПРАВА */
+.bottom-controls {
+  position: absolute; bottom: 25px; right: 20px; z-index: 1000;
+  display: flex; flex-direction: column; gap: 8px;
 }
+.update-btn {
+  background: rgba(15, 23, 42, 0.95); color: white; border: 1px solid rgba(255,255,255,0.2);
+  padding: 11px 24px; border-radius: 30px; font-weight: bold; cursor: pointer;
+  font-family: monospace; transition: 0.2s;
+}
+.update-btn:hover { background: #28a745; border-color: #28a745; transform: scale(1.02); }
+.status-bar {
+  background: rgba(0,0,0,0.75); padding: 5px 12px; border-radius: 20px;
+  font-size: 11px; color: #cbd5e1; text-align: center; font-family: monospace;
+}
+
+.leaflet-popup-content-wrapper { background: #111827 !important; color: #ffffff !important; border-radius: 8px !important; }
 .leaflet-popup-tip { background: #111827 !important; }
 </style>
 </head>
 <body>
 
-<!-- ТОЛЬКО ВРЕМЯ И ДАТА -->
+<div class="main-title-header">
+  Карта тревог ПФО от @radarPF0, цель - информирование гражданских
+</div>
+
 <div class="clock-panel">
   <div class="time-main" id="liveTime">00:00:00</div>
   <div class="date-main" id="liveDate">ЗАГРУЗКА...</div>
 </div>
 
-<!-- ВЫДВИЖНАЯ ХЕРЬ СЛЕВА СНИЗУ ПО СТРЕЛОЧКЕ -->
 <div class="legend-wrapper" id="legendBlock">
   <div class="legend-content">
     <div class="legend-item"><div class="legend-color" style="background:#6c757d;"></div><span>Отбой / Спокойно</span></div>
@@ -74,16 +97,21 @@ html, body, #map {
   <button class="toggle-arrow-btn" onclick="document.getElementById('legendBlock').classList.toggle('open')">❯</button>
 </div>
 
+<div class="bottom-controls">
+  <button class="update-btn" id="updateBtn">🔄 Обновить</button>
+  <div class="status-bar" id="statusText">Синхронизация...</div>
+</div>
+
 <div id="map"></div>
-  
+
 <!-- ОФИЦИАЛЬНЫЙ ДВИЖОК LEAFLET -->
 <script src="https://cloudflare.com"></script>
 
 <script>
-// ЗАПУСК КАРТЫ С ВИДОМ НА ВСЮ РОССИЮ И МИР (КАК ТЫ ХОТЕЛ!)
-const map = L.map('map', { zoomControl: false }).setView([58.0, 70.0], 3.5);
+// ЗАПУСК КАРТЫ С МАСШТАБОМ 2 ДЛЯ ДЕПЛОЯ ВСЕГО МИРА
+const map = L.map('map', { zoomControl: false }).setView([55.0, 75.0], 2);
 
-// КРАСИВАЯ ЖИВАЯ ТЁМНАЯ КАРТА (РАБОТАЕТ БЕЗ БЛОКИРОВОК)
+// ОФИЦИАЛЬНАЯ ССЫЛКА НА КАРТИНКИ-ПЛИТКИ КАРТЫ МИРА С ТВОЕГО СКРИНШОТА!
 L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
   maxZoom: 18,
   attribution: '&copy; OpenStreetMap'
@@ -101,12 +129,12 @@ function updateClock() {
   const s = String(msk.getSeconds()).padStart(2, '0');
   
   document.getElementById('liveTime').innerText = h + ':' + m + ':' + s;
-  document.getElementById('liveDate').innerText = days[msk.getDay()] + ', ' + msk.getDate() + ' ' + months[msk.getMonth()];
+  document.getElementById('liveDate').innerText = days[msk.getDay()] + ', ' + msk.getDate() + ' ' + months[msk.getMonth()] + ' ' + msk.getFullYear() + ' г.';
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// НАШИ ТГ-КАНАЛЫ (СКЛЕЙКА С БУКВОЙ /S/ ПРОТИВ ОБРЕЗАНИЯ)
+// ТВОИ КАНАЛЫ (НЕУБИВАЕМАЯ СКЛЕЙКА С БУКВОЙ /S/ ПРОТИВ ОБРЕЗАНИЯ)
 const mainCh = "https://" + "t.me/s/" + "prifoo";
 const fallCh = "https://" + "t.me/s/" + "locatorru";
 
@@ -130,19 +158,16 @@ const regionAliases = {
 
 const activeLayers = {};
 
-// БРОНЕБОЙНЫЙ ЗАПРОС ЧЕРЕЗ ПРОКСИ-СЕРВЕРА
 async function req(url) {
   for (let p of proxies) {
     try {
       const res = await fetch(p + encodeURIComponent(url), { signal: AbortSignal.timeout(6000) });
-      if (res.ok) { 
-        const t = await res.text(); 
-        if (t && t.length > 1000) return t; 
-      }
+      if (res.ok) { const t = await res.text(); if (t && t.length > 1000) return t; }
     } catch (e) {}
   }
   return null;
 }
+
 // ТОЧНЫЕ КОНТУРЫ НАШЕГО ПФО (ЗАШИТЫ В ПАМЯТЬ)
 const pfoData = {
   "type": "FeatureCollection",
@@ -159,7 +184,6 @@ const pfoData = {
   ]
 };
 
-// Отрисовываем серые области поверх живой карты мира
 L.geoJSON(pfoData, {
   style: function() { return { color: "#4a5568", fillColor: "#6c757d", fillOpacity: 0.4, weight: 1.5 }; },
   onEachFeature: function(f, layer) {
@@ -169,15 +193,15 @@ L.geoJSON(pfoData, {
   }
 }).addTo(map);
 
-// АВТО-СКАНЕР ТЕКСТА ИЗ ТВОИХ КАНАЛОВ
 async function scan() {
+  document.getElementById('statusText').innerText = "Сканирование...";
   let html = await req(mainCh) || await req(fallCh);
-  if (!html) return;
+  if (!html) { document.getElementById('statusText').innerText = "Ошибка сети"; return; }
   
   const div = document.createElement('div');
   div.innerHTML = html;
   const posts = Array.from(div.querySelectorAll('.tgme_widget_message_text')).map(el => el.innerText.toLowerCase());
-  if (posts.length === 0) return;
+  if (posts.length === 0) { document.getElementById('statusText').innerText = "Посты не найдены"; return; }
   
   const lastPost = posts[posts.length - 1];
   
@@ -189,8 +213,9 @@ async function scan() {
       if (lastPost.includes(alias)) {
         if (lastPost.includes("ракет") || lastPost.includes("тревог")) {
           color = "#dc3545"; txt = "🔴 Тревога";
-        } else if (lastPost.includes("бпла") || lastPost.includes("опаснос") || lastPost.includes("вниман")) {
-          color = "#ffc107"; txt = "🟡 Опасность БпЛА";
+                  } else if (lastPost.includes("бпла") || lastPost.includes("опаснос") || lastPost.includes("вниман")) {
+          color = "#ffc107";
+          txt = "🟡 Опасность БпЛА";
         }
       }
     }
@@ -200,11 +225,10 @@ async function scan() {
       activeLayers[reg].getPopup().setContent("<b>" + reg + "</b><br>Статус: " + txt);
     }
   }
+  
+  document.getElementById('statusText').innerText = "Актуально: " + new Date().toLocaleTimeString("ru-RU", {timeZone: "Europe/Moscow"});
 }
 
-// Проверка постов на автомате каждые 30 секунд
+document.getElementById('updateBtn').addEventListener('click', scan);
 setInterval(scan, 30000);
 scan();
-</script>
-</body>
-</html>
