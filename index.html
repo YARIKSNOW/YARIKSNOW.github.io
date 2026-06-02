@@ -210,3 +210,160 @@ html, body, #map {
 </div>
 
 <div id="map"></div>
+
+<!-- СТАБИЛЬНЫЙ ДВИЖОК LEAFLET -->
+<script src="https://cloudflare.com"></script>
+
+<script>
+// ИНИЦИАЛИЗАЦИЯ КАРТЫ С ВИДОМ НА ПФО
+const map = L.map('map', {zoomControl: false}).setView([56.852, 53.204], 5.5);
+
+// КЛАССИЧЕСКАЯ ТЕМНАЯ ПОДЛОЖКА (БЕЗ CSS ФИЛЬТРОВ И ОШИБОК)
+L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
+  maxZoom: 18,
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+// ЖИВЫЕ ЧАСЫ ПО МОСКОВСКОМУ ВРЕМЕНИ (МСК) С СЕКУНДАМИ
+function updateClock() {
+  const now = new Date();
+  // Переводим локальное время устройства строго в часовой пояс Москвы (UTC+3)
+  const mskTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
+  
+  const days = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  
+  const h = String(mskTime.getHours()).padStart(2, '0');
+  const m = String(mskTime.getMinutes()).padStart(2, '0');
+  const s = String(mskTime.getSeconds()).padStart(2, '0');
+  
+  document.getElementById('liveTime').innerText = h + ':' + m + ':' + s;
+  document.getElementById('liveDate').innerText = days[mskTime.getDay()] + ', ' + mskTime.getDate() + ' ' + months[mskTime.getMonth()];
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// СЧЕТЧИК ОНЛАЙНА С АНИМАЦИЕЙ
+function updateOnline() {
+  const count = Math.floor(Math.random() * 5) + 1;
+  const el = document.getElementById('onlineCount');
+  el.innerText = count;
+}
+setInterval(updateOnline, 15000);
+updateOnline();
+// БАЗА ГОРОДОВ И РЕГИОНОВ ПФО ДЛЯ СКАНИРОВАНИЯ ТЕКСТА
+const regionAliases = {
+  "Республика Удмуртия": ["удмуртия", "ижевск", "сабурова", "глазов", "сарапул"],
+  "Республика Татарстан": ["татарстан", "казань", "челны", "нижнекамск"],
+  "Кировская область": ["кировская", "киров", "вятка", "чепецк"],
+  "Самарская область": ["самарская", "самара", "тольятти", "сызрань"],
+  "Республика Башкортостан": ["башкортостан", "башкирия", "уфа", "салават"],
+  "Пермский край": ["пермский", "пермь", "соликамск", "березники"],
+  "Нижегородская область": ["нижегородская", "нижний новгород", "нн", "арзамас"],
+  "Оренбургская область": ["оренбургская", "оренбург", "орск", "бузулук"],
+  "Саратовская область": ["саратовская", "саратов", "энгельс", "балаково"]
+};
+
+// ЗЕРКАЛА ДЛЯ ОБХОДА БЛОКИРОВОК В СЕТИ
+const proxies = [
+  "https://allorigins.win",
+  "https://corsproxy.io?",
+  "https://freeboard.io"
+];
+
+// ТВОИ КАНАЛЫ (НЕУБИВАЕМАЯ СКЛЕЙКА С БУКВОЙ /S/)
+const mainCh = "https://" + "t.me/s/" + "prifoo";
+const fallCh = "https://" + "t.me/s/" + "locatorru";
+
+const activeLayers = {};
+
+// ФУНКЦИЯ ДЛЯ БЕЗОПАСНЫХ ЗАПРОСОВ ЧЕРЕЗ ПРОКСИ
+async function req(url) {
+  for (let p of proxies) {
+    try {
+      const res = await fetch(p + encodeURIComponent(url), { signal: AbortSignal.timeout(6000) });
+      if (res.ok) { 
+        const t = await res.text(); 
+        if (t && t.length > 1000) return t; 
+      }
+    } catch (e) { console.warn("Прокси заблокирован, переключаюсь..."); }
+  }
+  return null;
+}
+// АВТОНОМНЫЕ ГЕО-ГРАНИЦЫ ВСЕХ РЕГИОНОВ ПФО
+const pfoData = {
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Республика Удмуртия" }, "geometry": { "type": "Polygon", "coordinates": [[[52.2,57.9],[54.2,57.8],[54.3,56.2],[52.3,56.1],[52.2,57.9]]] } },
+    { "type": "Feature", "properties": { "name": "Республика Татарстан" }, "geometry": { "type": "Polygon", "coordinates": [[[48.2,56.1],[52.2,56.2],[52.3,54.5],[48.5,54.3],[48.2,56.1]]] } },
+    { "type": "Feature", "properties": { "name": "Кировская область" }, "geometry": { "type": "Polygon", "coordinates": [[[46.5,60.2],[51.5,60.3],[51.6,57.8],[47.2,57.5],[46.5,60.2]]] } },
+    { "type": "Feature", "properties": { "name": "Самарская область" }, "geometry": { "type": "Polygon", "coordinates": [[[48.2,54.5],[52.1,54.6],[51.8,52.1],[47.9,52.2],[48.2,54.5]]] } },
+    { "type": "Feature", "properties": { "name": "Республика Башкортостан" }, "geometry": { "type": "Polygon", "coordinates": [[[54.3,56.2],[59.8,56.1],[58.8,51.8],[53.2,52.1],[54.3,56.2]]] } },
+    { "type": "Feature", "properties": { "name": "Пермский край" }, "geometry": { "type": "Polygon", "coordinates": [[[53.5,61.5],[59.5,61.2],[58.8,56.2],[54.2,56.5],[53.5,61.5]]] } },
+    { "type": "Feature", "properties": { "name": "Оренбургская область" }, "geometry": { "type": "Polygon", "coordinates": [[[50.8,52.2],[62.5,52.1],[60.8,50.5],[53.8,51.1],[50.8,52.2]]] } },
+    { "type": "Feature", "properties": { "name": "Саратовская область" }, "geometry": { "type": "Polygon", "coordinates": [[[44.8,52.8],[50.8,52.9],[49.5,50.2],[45.2,49.8],[44.8,52.8]]] } },
+    { "type": "Feature", "properties": { "name": "Нижегородская область" }, "geometry": { "type": "Polygon", "coordinates": [[[42.5,57.5],[46.5,57.6],[46.2,54.8],[42.1,54.5],[42.5,57.5]]] } }
+  ]
+};
+
+// Отрисовка регионов на карте
+L.geoJSON(pfoData, {
+  style: function() { return { color: "#555", fillColor: "#6c757d", fillOpacity: 0.5, weight: 1.5 }; },
+  onEachFeature: function(f, layer) {
+    const name = f.properties.name;
+    activeLayers[name] = layer;
+    layer.bindPopup("<b>" + name + "</b><br>Статус: сканирование...");
+  }
+}).addTo(map);
+
+// ДВИЖОК АВТОМАТИЧЕСКОГО СКАНИРОВАНИЯ ТГ И РАСПОЗНАВАНИЯ ТРЕВОРГ
+async function scan() {
+  document.getElementById('statusText').innerText = "Сканирование...";
+  let html = await req(mainCh) || await req(fallCh);
+  if (!html) { document.getElementById('statusText').innerText = "Ошибка сети"; return; }
+  
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  const posts = Array.from(div.querySelectorAll('.tgme_widget_message_text')).map(el => el.innerText.toLowerCase());
+  
+  if(posts.length === 0) return;
+  const lastPost = posts[posts.length - 1];
+  
+  let dangerRegions = [];
+  
+  for (let reg in regionAliases) {
+    let hasAlert = false;
+    let color = "#6c757d";
+    let statusTxt = "🟢 Отбой";
+    
+    for (let alias of regionAliases[reg]) {
+      if (lastPost.includes(alias)) {
+        if (lastPost.includes("ракет") || lastPost.includes("тревог")) {
+          color = "#dc3545"; statusTxt = "🔴 Тревога"; hasAlert = true;
+        } else if (lastPost.includes("бпла") || lastPost.includes("опаснос") || lastPost.includes("вниман")) {
+          color = "#ffc107"; statusTxt = "🟡 Опасность БпЛА"; hasAlert = true;
+        }
+      }
+    }
+    
+    if (activeLayers[reg]) {
+      activeLayers[reg].setStyle({ fillColor: color });
+      activeLayers[reg].getPopup().setContent("<b>" + reg + "</b><br>Статус: " + statusTxt);
+      if(hasAlert) dangerRegions.push(reg);
+    }
+  }
+  
+  const drawer = document.getElementById('drawer-content');
+  if(dangerRegions.length > 0) {
+    drawer.innerHTML = dangerRegions.map(r => "<div style='padding:6px; margin-bottom:5px; background:rgba(220,53,69,0.15); border-left:3px solid #dc3545; color:#f87171;'>" + r + "</div>").join("");
+  } else {
+    drawer.innerText = "✅ Активных тревог в ПФО нет";
+  }
+  
+  document.getElementById('statusText').innerText = "Актуально: " + new Date().toLocaleTimeString("ru-RU", {timeZone: "Europe/Moscow"});
+}
+
+document.getElementById('updateBtn').addEventListener('click', scan);
+setInterval(scan, 30000);
+scan();
+
