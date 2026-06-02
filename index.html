@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Радар ПФО — Мониторинг v19.0</title>
+<title>Радар ПФО — ЦУП v19.5</title>
 
 <!-- ОФИЦИАЛЬНЫЕ СТИЛИ LEAFLET -->
 <link rel="stylesheet" href="https://cloudflare.com" />
 
 <style>
-/* 1. ОБЩИЕ СТИЛИ */
+/* БАЗОВЫЕ СТИЛИ ЭКРАНА */
 html, body, #map {
   margin: 0;
   padding: 0;
@@ -20,7 +20,7 @@ html, body, #map {
   overflow: hidden;
 }
 
-/* 2. БЕЛАЯ ШАПКА КАК У RADARYRAL */
+/* БЕЛАЯ ОФИЦИАЛЬНАЯ ШАПКА */
 .main-title-header {
   position: absolute;
   top: 0;
@@ -37,54 +37,54 @@ html, body, #map {
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-/* 3. ЭФФЕКТ МАТОВОГО СТЕКЛА (BLUR) */
+/* СТИЛЬ ПАНЕЛЕЙ ИЗ МАТОВОГО СТЕКЛА */
 .glass-panel {
   position: absolute;
   z-index: 1000;
-  background: rgba(18, 14, 26, 0.85);
+  background: rgba(20, 24, 38, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 12px;
-  color: #e8eef2;
-  padding: 10px 18px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #e2e8f0;
+  padding: 10px 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 
-/* 4. ОНЛАЙН СЧЕТЧИК */
+/* ОНЛАЙН СЧЕТЧИК ПО ЦЕНТРУ */
 .online-counter {
-  top: 60px;
+  top: 65px;
   left: 50%;
   transform: translateX(-50%);
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
-/* 5. ЧАСЫ И ДАТА */
+/* ТОЧНЫЕ ЧАСЫ МСК С СЕКУНДАМИ СПРАВА */
 .clock-panel {
-  top: 60px;
+  top: 65px;
   right: 20px;
   text-align: right;
+  min-width: 140px;
 }
 .time-main {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
   font-family: 'JetBrains Mono', monospace;
+  color: #ffffff;
 }
 .date-main {
   font-size: 11px;
   color: #10b981;
   text-transform: uppercase;
-  margin-top: 2px;
+  margin-top: 3px;
+  font-weight: bold;
 }
 
-/* 6. ЛЕГЕНДА С КНОПКАМИ СНИЗУ */
+/* ЛЕГЕНДА СЛЕВА СНИЗУ */
 .legend {
-  bottom: 20px;
+  bottom: 25px;
   left: 20px;
   display: flex;
   flex-direction: column;
@@ -97,14 +97,15 @@ html, body, #map {
   gap: 8px;
 }
 .legend-color {
-  width: 24px;
-  height: 14px;
-  border-radius: 4px;
+  width: 22px;
+  height: 13px;
+  border-radius: 3px;
 }
 
+/* КНОПКА ОБНОВЛЕНИЯ И СТАТУС */
 .bottom-controls {
   position: absolute;
-  bottom: 20px;
+  bottom: 25px;
   right: 20px;
   z-index: 1000;
   display: flex;
@@ -112,11 +113,11 @@ html, body, #map {
   gap: 8px;
 }
 .update-btn {
-  background: rgba(18, 14, 26, 0.9);
+  background: rgba(20, 24, 38, 0.95);
   color: white;
   border: 1px solid rgba(255,255,255,0.2);
-  padding: 10px 22px;
-  border-radius: 40px;
+  padding: 11px 24px;
+  border-radius: 30px;
   font-weight: bold;
   cursor: pointer;
   font-family: monospace;
@@ -128,24 +129,25 @@ html, body, #map {
   transform: scale(1.02);
 }
 .status-bar {
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.75);
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 11px;
-  color: #ccc;
+  color: #cbd5e1;
   text-align: center;
+  font-family: monospace;
 }
 
-/* 7. БОКОВАЯ ШТОРКА МЕНЮ ДЛЯ ТРЕВОГ */
+/* ВЫЕЗЖАЮЩАЯ ШТОРКА ТРЕВОГ */
 .drawer {
   position: absolute;
   top: 55px;
   left: -320px;
   width: 300px;
   height: calc(100% - 55px);
-  background: rgba(15, 20, 30, 0.96);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.97);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-right: 1px solid rgba(255,255,255,0.15);
   z-index: 999;
   transition: left 0.3s ease;
@@ -158,10 +160,10 @@ html, body, #map {
 }
 .drawer-btn {
   position: absolute;
-  top: 60px;
+  top: 65px;
   left: 20px;
   z-index: 1000;
-  background: rgba(18, 14, 26, 0.85);
+  background: rgba(20, 24, 38, 0.85);
   color: white;
   border: 1px solid rgba(255,255,255,0.15);
   width: 40px;
@@ -173,194 +175,38 @@ html, body, #map {
   align-items: center;
   justify-content: center;
 }
-
-/* СТИЛИ ОКОН POPUP НА КАРТЕ */
-.custom-popup .leaflet-popup-content-wrapper {
-  background: #1a1f2e !important;
-  color: #e8eef2 !important;
-  border-radius: 12px !important;
-  padding: 5px !important;
-}
-.custom-popup .leaflet-popup-tip {
-  background: #1a1f2e !important;
-}
 </style>
 </head>
 <body>
 
 <div class="main-title-header">
-  Карта тревог ПФО от @radarPF0, цель - информирование гражданских
+  Карта тревог ПФО от телеграм-канала @radarPF0
 </div>
 
 <button class="drawer-btn" onclick="document.getElementById('drawer').classList.toggle('open')">☰</button>
 <div class="drawer" id="drawer">
-  <h3 style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">⚠️ Сектора ПФО</h3>
+  <h3 style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">⚠️ Статус регионов</h3>
   <div id="drawer-content" style="font-size:13px; color:#94a3b8;">✅ Активных тревог в ПФО нет</div>
 </div>
 
 <div class="glass-panel online-counter">
-  <span style="color:#2ecc71;">●</span> Онлайн: <span id="onlineCount">2</span>
+  <span style="color:#2ecc71; margin-right:2px;">●</span> Онлайн: <span id="onlineCount">3</span>
 </div>
 
 <div class="glass-panel clock-panel">
-  <div class="time-main" id="liveTime">14:57</div>
+  <div class="time-main" id="liveTime">00:00:00</div>
   <div class="date-main" id="liveDate">загрузка...</div>
 </div>
 
 <div class="glass-panel legend">
-  <div class="legend-item"><div class="legend-color" style="background:#6c757d;"></div><span>Отбой / Спокойно</span></div>
-  <div class="legend-item"><div class="legend-color" style="background:#ffc107;"></div><span>Опасность БпЛА</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#6c757d;"></div><span>Отбой</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#ffc107;"></div><span>Опасность по БпЛА</span></div>
   <div class="legend-item"><div class="legend-color" style="background:#dc3545;"></div><span>Ракетная опасность</span></div>
 </div>
 
 <div class="bottom-controls">
   <button class="update-btn" id="updateBtn">🔄 Обновить</button>
-  <div class="status-bar" id="statusText">Актуально</div>
+  <div class="status-bar" id="statusText">Синхронизация...</div>
 </div>
 
 <div id="map"></div>
-<script src="https://cloudflare.com"></script>
-<script>
-const map = L.map('map', {zoomControl: false}).setView([56.852, 53.204], 5.5);
-L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
-  maxZoom: 18,
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map);
-
-function updateClock() {
-  const now = new Date();
-  const days = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
-  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  document.getElementById('liveTime').innerText = h + ':' + m;
-  document.getElementById('liveDate').innerText = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()];
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-function updateOnline() {
-  const count = Math.floor(Math.random() * 5) + 1;
-  const el = document.getElementById('onlineCount');
-  el.innerText = count;
-  el.style.transform = 'scale(1.1)';
-  setTimeout(() => el.style.transform = 'scale(1)', 200);
-}
-setInterval(updateOnline, 15000);
-updateOnline();
-</script>
-<script>
-// СЛИТАЯ ЧАСТЬ 3 И 4 — БАЗА ДАННЫХ И ТГ-СКАНЕР ПФО
-const regionAliases = {
-  "Республика Удмуртия": ["удмуртия", "ижевск", "сабурова", "глазов"],
-  "Республика Татарстан": ["татарстан", "казань", "челны"],
-  "Кировская область": ["кировская", "киров", "вятка"],
-  "Самарская область": ["самарская", "самара", "тольятти"],
-  "Республика Башкортостан": ["башкортостан", "башкирия", "уфа"],
-  "Пермский край": ["пермский", "пермь", "соликамск"],
-  "Оренбургская область": ["оренбургская", "оренбург", "орск"],
-  "Саратовская область": ["саратовская", "саратов", "энгельс"],
-  "Нижегородская область": ["нижегородская", "нижний новгород", "нн"]
-};
-
-// НАЧАЛО ТВОЕГО КУСКА КОДА НА СКРИНШОТЕ
-const proxies = [
-  "https://allorigins.win",
-  "https://corsproxy.io?",
-  "https://freeboard.io"
-];
-
-// ВОТ СЮДА ВСТАВЛЯЙ ЭТОТ НЕУБИВАЕМЫЙ ВАРИАНТ В СТОЛБИК:
-const mainCh = "https://" + "t.me/s/" + "prifoo";
-const fallCh = "https://" + "t.me/s/" + "locatorru";
-
-const activeLayers = {};
-// КОНЕЦ ТВОЕГО КУСКА КОДА
-
-const pfoData = {
-  "type": "FeatureCollection",
-  "features": [
-    { "type": "Feature", "properties": { "name": "Республика Удмуртия" }, "geometry": { "type": "Polygon", "coordinates": [[[52.2,57.9],[54.2,57.8],[54.3,56.2],[52.3,56.1],[52.2,57.9]]] } },
-    { "type": "Feature", "properties": { "name": "Республика Татарстан" }, "geometry": { "type": "Polygon", "coordinates": [[[48.2,56.1],[52.2,56.2],[52.3,54.5],[48.5,54.3],[48.2,56.1]]] } },
-    { "type": "Feature", "properties": { "name": "Кировская область" }, "geometry": { "type": "Polygon", "coordinates": [[[46.5,60.2],[51.5,60.3],[51.6,57.8],[47.2,57.5],[46.5,60.2]]] } },
-    { "type": "Feature", "properties": { "name": "Самарская область" }, "geometry": { "type": "Polygon", "coordinates": [[[48.2,54.5],[52.1,54.6],[51.8,52.1],[47.9,52.2],[48.2,54.5]]] } },
-    { "type": "Feature", "properties": { "name": "Республика Башкортостан" }, "geometry": { "type": "Polygon", "coordinates": [[[54.3,56.2],[59.8,56.1],[58.8,51.8],[53.2,52.1],[54.3,56.2]]] } },
-    { "type": "Feature", "properties": { "name": "Пермский край" }, "geometry": { "type": "Polygon", "coordinates": [[[53.5,61.5],[59.5,61.2],[58.8,56.2],[54.2,56.5],[53.5,61.5]]] } },
-    { "type": "Feature", "properties": { "name": "Оренбургская область" }, "geometry": { "type": "Polygon", "coordinates": [[[50.8,52.2],[62.5,52.1],[60.8,50.5],[53.8,51.1],[50.8,52.2]]] } },
-    { "type": "Feature", "properties": { "name": "Саратовская область" }, "geometry": { "type": "Polygon", "coordinates": [[[44.8,52.8],[50.8,52.9],[49.5,50.2],[45.2,49.8],[44.8,52.8]]] } },
-    { "type": "Feature", "properties": { "name": "Нижегородская область" }, "geometry": { "type": "Polygon", "coordinates": [[[42.5,57.5],[46.5,57.6],[46.2,54.8],[42.1,54.5],[42.5,57.5]]] } }
-  ]
-};
-
-L.geoJSON(pfoData, {
-  style: function() { return { color: "#555", fillColor: "#6c757d", fillOpacity: 0.5, weight: 1.5 }; },
-  onEachFeature: function(f, layer) {
-    const name = f.properties.name;
-    activeLayers[name] = layer;
-    layer.bindPopup("<b>" + name + "</b><br>Статус: сканирование...");
-  }
-}).addTo(map);
-
-async function req(url) {
-  for (let p of proxies) {
-    try {
-      const res = await fetch(p + encodeURIComponent(url), { signal: AbortSignal.timeout(6000) });
-      if (res.ok) { const t = await res.text(); if (t && t.length > 1000) return t; }
-    } catch (e) {}
-  }
-  return null;
-}
-
-async function scan() {
-  document.getElementById('statusText').innerText = "Сканирование...";
-  let html = await req(mainCh) || await req(fallCh);
-  if (!html) { document.getElementById('statusText').innerText = "Ошибка сети"; return; }
-  
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  const posts = Array.from(div.querySelectorAll('.tgme_widget_message_text')).map(el => el.innerText.toLowerCase());
-  
-  if(posts.length === 0) return;
-  const lastPost = posts[posts.length - 1];
-  
-  let dangerRegions = [];
-  
-  for (let reg in regionAliases) {
-    let hasAlert = false;
-    let color = "#6c757d";
-    let statusTxt = "🟢 Отбой";
-    
-    for (let alias of regionAliases[reg]) {
-      if (lastPost.includes(alias)) {
-        if (lastPost.includes("ракет") || lastPost.includes("тревог")) {
-          color = "#dc3545"; statusTxt = "🔴 Тревога"; hasAlert = true;
-        } else if (lastPost.includes("бпла") || lastPost.includes("опаснос") || lastPost.includes("вниман")) {
-          color = "#ffc107"; statusTxt = "🟡 Опасность БпЛА"; hasAlert = true;
-        }
-      }
-    }
-    
-    if (activeLayers[reg]) {
-      activeLayers[reg].setStyle({ fillColor: color });
-      activeLayers[reg].getPopup().setContent("<b>" + reg + "</b><br>Статус: " + statusTxt);
-      if(hasAlert) dangerRegions.push(reg);
-    }
-  }
-  
-  const drawer = document.getElementById('drawer-content');
-  if(dangerRegions.length > 0) {
-    drawer.innerHTML = dangerRegions.map(r => "<div style='padding:5px; margin-bottom:5px; background:rgba(220,53,69,0.2); border-left:3px solid red;'>" + r + "</div>").join("");
-  } else {
-    drawer.innerText = "✅ Активных тревог в ПФО нет";
-  }
-  
-  document.getElementById('statusText').innerText = "Актуально: " + new Date().toLocaleTimeString();
-}
-
-document.getElementById('updateBtn').addEventListener('click', scan);
-setInterval(scan, 30000);
-scan();
-</script>
-</body>
-</html>
-
